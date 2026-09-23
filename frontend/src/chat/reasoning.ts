@@ -1,4 +1,4 @@
-import { escapeHtml } from './dom';
+import { escapeHtml } from './dom.ts';
 import type { ReasoningStep } from './types';
 
 interface ReasoningLabels {
@@ -7,6 +7,7 @@ interface ReasoningLabels {
   count: (count: number) => string;
   types: Record<string, string>;
   stateLabels: Record<StepState, string>;
+  tools?: Record<string, string>;
 }
 
 type StepState = 'complete' | 'active' | 'pending' | 'error';
@@ -28,8 +29,8 @@ export function renderReasoningTimeline(steps: ReasoningStep[], labels: Reasonin
   const progress = completed / steps.length;
   const rows = steps.map((step) => {
     const state = stepState(step);
-    const label = step.message || (typeof step.tool_output === 'string' ? step.tool_output : '') || step.tool_name || labels.fallback;
-    const type = step.type ? `<span class="reasoning-type">${escapeHtml(labels.types[step.type] || step.type.replaceAll('_', ' '))}</span>` : '';
+    const label = step.message || (step.tool_name && labels.tools?.[step.tool_name]) || labels.fallback;
+    const type = step.type && labels.types[step.type] ? `<span class="reasoning-type">${escapeHtml(labels.types[step.type])}</span>` : '';
     const icon = state === 'complete' ? '<svg class="icon"><use href="#i-check"></use></svg>' : state === 'error' ? '!' : '<span class="reasoning-step-dot"></span>';
     return `<li class="reasoning-step is-${state}"><span class="reasoning-step-icon" aria-hidden="true">${icon}</span><span class="reasoning-step-copy">${type}<span class="visually-hidden">${escapeHtml(labels.stateLabels[state])}: </span><span>${escapeHtml(label)}</span></span></li>`;
   }).join('');

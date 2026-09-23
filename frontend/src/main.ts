@@ -4,7 +4,10 @@ import { copy } from './chat/i18n';
 import { element as $, escapeHtml as esc, safeExternalUrl } from './chat/dom';
 import { renderReasoningTimeline } from './chat/reasoning';
 import { ApiClient, apiLanguage } from './chat/api';
-import { canOffer, normaliseProduct, offeredQuantity } from './chat/products';
+import { canOffer, formatSpecifications, normaliseProduct, offeredQuantity } from './chat/products';
+import { storedLanguage } from './chat/localization';
+import { renderClarification, renderKnowledgeSources } from './chat/response';
+import { applyStorefrontLanguage } from './chat/storefront';
 import type { Cart, CartResult, ChatResponse, HistoryMessage, Language, Offer, Product, ProductSource, ReasoningStep, UploadResponse } from './chat/types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -32,7 +35,8 @@ function setMascot(state: ChipMascotState) {
   if (state === 'success') mascotTimer = window.setTimeout(() => setMascot('idle'), 1800);
 }
 function isLanguage(value: unknown): value is Language { return value === 'ru' || value === 'kz' || value === 'en'; }
-let language: Language = (() => { try { const value = storage?.getItem(LANGUAGE_KEY); return isLanguage(value) ? value : 'ru'; } catch { return 'ru'; } })();
+let language: Language = (() => { try { return storedLanguage(storage?.getItem(LANGUAGE_KEY)); } catch { return 'ru'; } })();
+api.setLanguage(language);
 const l = (ru: string, kk: string, en: string) => language === 'kz' ? kk : language === 'en' ? en : ru;
 const t = () => copy[language];
 let cart: Cart = { items: [], checkout_url: null };
@@ -104,10 +108,12 @@ function appendMessage(html: string, user = false): HTMLElement {
 }
 function reasoning(steps: ReasoningStep[], live = false): string {
   return renderReasoningTimeline(steps, { title: t().reasoning, fallback: t().processing,
-    count: (n) => String(n), types: {}, stateLabels: t().reasoningStates }, live);
+    count: (n) => String(n), types: {}, stateLabels: t().reasoningStates,
+    tools: { search_products: t().catalogHelp, get_product_detail: t().processing, find_analogs: t().catalogHelp,
+      query_knowledge_base: t().sources, check_city_stock: t().stores } }, live);
 }
 function register(source: ProductSource): Product | null {
-  const product = normaliseProduct(source);
+  const product = normaliseProduct(source, language);
   if (product) { products.set(product.id, product); product.analogs.forEach((a) => products.set(a.id, a)); }
   return product;
 }
@@ -127,7 +133,7 @@ function renderProduct(product: Product, requested?: number | null): string {
   return '<article class="product-card" data-product-card="' + product.id + '">' +
     '<div class="product-topline"><span class="product-brand">' + esc(product.brand) + '</span><span class="stock-badge' + (!product.stock ? ' out-of-stock' : '') + '">' + esc(stock) + '</span></div>' +
     '<div class="product-body"><h3>' + esc(product.name) + '</h3><p class="product-article">' + t().article + ': ' + esc(product.article) + '</p>' +
-    '<div class="product-specs">' + product.specifications.map((spec) => '<span>' + esc(spec) + '</span>').join('') + '</div>' +
+    '<div class="product-specs">' + formatSpecifications(product.specificationEntries, language).map((spec) => '<span>' + esc(spec) + '</span>').join('') + '</div>' +
     '<strong class="product-price">' + money(product.priceVerified ? product.price : null) + '</strong>' +
     (product.rationale ? '<p class="analog-reason">' + esc(product.rationale) + '</p>' : '') +
     warnings(product.warnings) + (date ? '<small class="checked-at">' + t().checkedAt + ': ' + esc(date) + '</small>' : '') +
@@ -255,11 +261,15 @@ async function showChat(text: string) {
   clearOffers();
   const cards = (data.sources || []).map(register).filter((p): p is Product => !!p);
   let content = reasoning(data.reasoning_steps || []) + renderText(data.answer) + warnings(data.warnings) +
+    renderClarification(data.clarification, data.answer, t().clarification) +
     cards.map((product) => renderProduct(product, offeredQuantity(product, data.pending_offer))).join('') +
-    (data.knowledge_sources || []).map((source) => safeLink(source.source_url, source.title, 'certificate-link')).join('');
+    renderKnowledgeSources(data.knowledge_sources || [], t());
   if (data.pending_offer) content += inlineOffer(data.pending_offer);
   if (data.cart_updated && data.cart_url) content += safeLink(data.cart_url, t().checkout, 'certificate-link');
-  appendMessage(content);
+  const reply = appendMessage(content);
+  if (data.answer_language) reply.lang = data.answer_language;
+  // A request ID is enough to correlate a report with backend diagnostics; no session token is exposed.
+  if (data.request_id) reply.dataset.requestId = data.request_id;
   history.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer.slice(0, 4000) });
   if (history.length > 10) history.splice(0, history.length - 10);
   if (data.cart_updated) {
@@ -373,13 +383,14 @@ function updateLauncher() {
 }
 function applyLanguage() {
   document.documentElement.lang = language === 'kz' ? 'kk' : language;
+  applyStorefrontLanguage(language);
   for (const [selector, value] of Object.entries({
     '#cart-label': t().cart, '#assistant-name-text': 'ChipAI', '#launcher-label-text': 'ChipAI',
     '#online-label': t().consultant, '#assistant-role': t().role, '#catalog-help': t().catalogHelp,
     '#reply-time-label': t().replyTime, '#welcome-kicker': t().welcomeKicker, '#welcome-copy': t().welcome,
     '#welcome-hint': t().welcomeHint, '#welcome-time': t().welcomeTime, '#composer-send-hint': t().composerSendHint,
     '#composer-newline-hint': t().composerNewlineHint, '#footer-assistant-label': t().footer,
-    '#demo-data-label': language === 'en' ? 'Replies in Russian' : t().catalogData,
+    '#demo-data-label': t().catalogData,
     '#cart-drawer-title': t().cart, '#cart-total-label': t().total, '#cart-checkout-button': t().checkout,
     '#cart-demo-note': t().demoOrder, '#shipping-progress-copy': t().deliveryNote,
   })) $(selector).textContent = value;
@@ -390,9 +401,13 @@ function applyLanguage() {
   ui.attach.setAttribute('aria-label', t().attach);
   ui.attach.title = t().fileFormats;
   ui.close.setAttribute('aria-label', t().closeChat);
+  ui.close.title = t().closeChat;
   ui.minimize.setAttribute('aria-label', t().closeChat);
+  ui.minimize.title = t().closeChat;
   ui.drawerClose.setAttribute('aria-label', t().closeCart);
   $('#language-toggle').setAttribute('aria-label', 'RU / KZ / EN');
+  $('#chat-languages').setAttribute('aria-label', t().chatLanguage);
+  ui.quickPrompts.setAttribute('aria-label', t().promptExamples);
   document.querySelectorAll<HTMLElement>('[data-language-option]').forEach((option) => option.classList.toggle('is-current', option.dataset.languageOption === language));
   document.querySelectorAll<HTMLButtonElement>('[data-chat-language]').forEach((button) => {
     button.classList.toggle('is-current', button.dataset.chatLanguage === language);
@@ -403,11 +418,40 @@ function applyLanguage() {
     if (label.parentElement) label.parentElement.dataset.prompt = t().promptQueries[index];
   });
   $('#shipping-progress-bar').parentElement?.setAttribute('hidden', '');
+  refreshLocalizedControls();
+  attachmentPreview();
   renderCart();
   updateLauncher();
 }
+function refreshLocalizedControls() {
+  // Redraw only card controls, preserving the shopper's exact input and every server-bound offer.
+  const cards = [...ui.messages.querySelectorAll<HTMLElement>('[data-product-card]')]
+    .filter((card) => !card.parentElement?.closest('[data-product-card]'));
+  for (const card of cards) {
+    const product = products.get(Number(card.dataset.productCard));
+    if (!product) continue;
+    const quantities = [...card.querySelectorAll<HTMLInputElement>('[data-quantity-control] input')].map((input) => input.value);
+    const replacement = document.createElement('div');
+    replacement.innerHTML = renderProduct(product);
+    const next = replacement.firstElementChild;
+    if (next) {
+      next.querySelectorAll<HTMLInputElement>('[data-quantity-control] input').forEach((input, index) => {
+        if (quantities[index] !== undefined) input.value = quantities[index];
+      });
+      card.replaceWith(next);
+    }
+  }
+  ui.messages.querySelectorAll<HTMLElement>('.pending-offer > strong').forEach((title) => { title.textContent = t().offered; });
+  ui.messages.querySelectorAll<HTMLElement>('[data-review-offer]').forEach((button) => { button.textContent = t().review; });
+  if (offerDialog.open && pending) {
+    offerDialog.innerHTML = offerMarkup(pending) + '<div class="offer-actions"><button class="add-cart-button" type="button" data-confirm-offer>' + t().confirm + '</button>' +
+      '<button class="offer-cancel" type="button" data-cancel-offer>' + t().cancel + '</button></div>';
+    offerDialog.querySelectorAll<HTMLButtonElement>('button').forEach((button) => { button.disabled = confirmationBusy; });
+  }
+}
 function setLanguage(value: Language) {
   language = value;
+  api.setLanguage(value);
   try { storage?.setItem(LANGUAGE_KEY, value); } catch { /* Keep this tab's preference. */ }
   applyLanguage();
 }

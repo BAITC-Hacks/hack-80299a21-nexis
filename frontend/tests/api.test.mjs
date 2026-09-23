@@ -8,10 +8,10 @@ const memory = () => {
   return { getItem: (k) => entries.get(k) || null, setItem: (k, v) => entries.set(k, v), removeItem: (k) => entries.delete(k) };
 };
 
-test('KZ maps to kk; English interface explicitly uses Russian consultation', () => {
+test('KZ maps to kk; English and Russian use their own consultation languages', () => {
   assert.equal(apiLanguage('kz'), 'kk');
   assert.equal(apiLanguage('ru'), 'ru');
-  assert.equal(apiLanguage('en'), 'ru');
+  assert.equal(apiLanguage('en'), 'en');
 });
 test('native fetch is called without an ApiClient receiver', async () => {
   const api = new ApiClient('/api', async function (url) {
@@ -97,4 +97,65 @@ test('private browsing storage failures keep session in memory', async () => {
   const api = new ApiClient('/api', async (url) => url.endsWith('/session') ? (creates++, json({ session_id: 'one' })) : json({}), storage);
   await api.request('/cart'); await api.request('/cart');
   assert.equal(creates, 1);
+});
+
+test('all API requests carry the canonical language including sessions and uploads', async () => {
+  for (const [language, expected] of [['ru', 'ru'], ['kz', 'kk'], ['en', 'en']]) {
+    const seen = [];
+    const api = new ApiClient('/api', async (url, options) => {
+      seen.push(url);
+      assert.equal(options.headers.get('X-Language'), expected, url);
+      return url.endsWith('/session') ? json({ session_id: 'one' }) : json({});
+    });
+    api.setLanguage(language);
+    await api.request('/faq?q=delivery');
+    await api.request('/cart');
+    await api.post('/cart/offer', { product_id: 1, quantity: 2 });
+    await api.post('/cart/add', { product_id: 1, quantity: 2, confirmed: true, offer_token: 'token' });
+    await api.post('/cart/change-offer', { product_id: 1, quantity: 3 });
+    await api.post('/cart/change', { product_id: 1, quantity: 3, confirmed: true, offer_token: 'change' });
+    await api.post('/agent/chat', { language: apiLanguage(language), message: '515291' });
+    await api.request('/agent/upload-spec', { method: 'POST', body: new FormData() });
+    assert.equal(seen.length, 9);
+  }
+});
+test('language switching keeps the same session and does not issue any requests on its own', async () => {
+  const calls = [];
+  const api = new ApiClient('/api', async (url, options) => {
+    calls.push({ url, language: options.headers.get('X-Language'), session: options.headers.get('X-Session-Id') });
+    return url.endsWith('/session') ? json({ session_id: 'keep-me' }) : json({});
+  });
+  await api.request('/cart');
+  api.setLanguage('en');
+  assert.equal(calls.length, 2);
+  await api.request('/faq');
+  api.setLanguage('kz');
+  await api.request('/cart');
+  assert.deepEqual(calls.slice(1).map((call) => call.session), ['keep-me', 'keep-me', 'keep-me']);
+  assert.deepEqual(calls.slice(1).map((call) => call.language), ['ru', 'en', 'kk']);
+});
+test('legacy Russian backend errors are translated for EN and KK by stable code', async () => {
+  for (const [language, expected] of [['en', /price changed/i], ['kz', /Баға өзгерді/]]) {
+    const api = new ApiClient('/api', async (url) => url.endsWith('/session') ? json({ session_id: 'one' }) : json({ detail: 'Цена изменилась', code: 'price_changed' }, 409));
+    api.setLanguage(language);
+    await assert.rejects(api.post('/cart/add', {}), (error) => expected.test(error.message) && error.code === 'price_changed');
+  }
+});
+test('v3 localized error detail and params are retained', async () => {
+  const api = new ApiClient('/api', async (url) => url.endsWith('/session') ? json({ session_id: 'one' }) : json({ detail: 'Only 3 available.', code: 'insufficient_stock', params: { remaining: 3 }, answer_language: 'en' }, 409));
+  api.setLanguage('en');
+  await assert.rejects(api.post('/cart/add', {}), (error) => error.message === 'Only 3 available.' && error.params.remaining === 3);
+});
+test('unknown foreign-language errors use a local generic error without internal details', async () => {
+  const api = new ApiClient('/api', async (url) => url.endsWith('/session') ? json({ session_id: 'one' }) : json({ detail: 'Внутренняя ошибка: /private/path', code: 'new_backend_code', answer_language: 'ru' }, 500));
+  api.setLanguage('en');
+  await assert.rejects(api.request('/cart'), (error) => error.message.includes('try again later') && !error.message.includes('/private/path'));
+});
+test('network failures and validation fallback use the selected language', async () => {
+  const api = new ApiClient('/api', async () => { throw new TypeError('offline'); });
+  api.setLanguage('en');
+  await assert.rejects(api.request('/cart'), (error) => error.code === 'network_error' && error.message.includes('Check your connection'));
+  const invalid = new ApiClient('/api', async (url) => url.endsWith('/session') ? json({ session_id: 'one' }) : json({ detail: [{ input: 'private input' }] }, 422));
+  invalid.setLanguage('kz');
+  await assert.rejects(invalid.post('/agent/chat', {}), (error) => error.code === 'validation_error' && error.message.includes('4000') && !error.message.includes('private input'));
 });

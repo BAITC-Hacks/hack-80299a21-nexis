@@ -327,7 +327,7 @@ ul.data-warnings { list-style: disc; padding-left: 28px; }
 .stock-details { margin: 8px 0; font-size: 12px; }
 .stock-details summary { cursor: pointer; }
 .stock-details ul { padding-left: 15px; list-style: disc; }
-.pending-offer { border: 1px solid #b5dadd; padding: 12px; border-radius: 12px; margin-top: 12px; background: #f1faf8; }
+.pending-offer { border: 1px solid #b5dadd; padding: 12px; border-radius: 12px; margin-top: 12px; background: #f1faf8; color: #143247; }
 .pending-offer p { margin-top: 8px; }
 .spec-estimate h3, .spec-estimate h4 { font-weight: 700; margin: 10px 0; }
 .estimate-row { margin-top: 16px; padding-top: 10px; border-top: 1px solid #dfebef; }
@@ -335,5 +335,12 @@ ul.data-warnings { list-style: disc; padding-left: 28px; }
 .unmatched-lines li { margin: 10px 0; overflow-wrap: anywhere; }
 .cart-state { padding: 20px; color: #617b8a; }
 .assistant-bubble p { overflow-wrap: anywhere; }
-.assistant-bubble a { color: #087c9c; text-decoration: underline; text-underline-offset: 2px; }
+.assistant-bubble a { color: #7dd3fc; text-decoration: underline; text-underline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .55; }
+.knowledge-sources { margin-top: 12px; font-size: 12px; }
+.knowledge-sources summary { cursor: pointer; font-weight: 600; }
+.knowledge-sources ul { padding-left: 18px; margin: 8px 0 0; }
+.knowledge-sources li { margin: 6px 0; overflow-wrap: anywhere; }
+.knowledge-sources small { display: block; color: #a5b8cc; margin-top: 3px; }
+.clarification { margin-top: 12px; padding: 10px 12px; border-left: 3px solid #16a34a; background: #f0fdf4; color: #143247; border-radius: 6px; }
+.clarification p { margin-bottom: 0; }

@@ -48,3 +48,17 @@ test('matching card starts with the exact pending-offer quantity', () => {
   assert.equal(offeredQuantity(product, { product_id: 42, quantity: 0 }), undefined);
   assert.equal(offeredQuantity(product, { product_id: 42, quantity: 1.5 }), undefined);
 });
+
+test('stable specification keys translate labels without altering names, values or identifiers', () => {
+  for (const [language, expected] of [['ru', 'Номинальный ток'], ['kz', 'Номиналды ток'], ['en', 'Rated current']]) {
+    const source = { id: 515291, name: '027228 АВ DRX250 MT Legrand', article: '200300285_', specifications: [
+      { key: 'NOMINALNYY_TOK', name: 'Номинальный ток', value: '160 A' },
+      { key: 'unknown_key', name: 'Original source label', value: '027228' },
+    ] };
+    const product = normaliseProduct(source, language);
+    assert.equal(product.name, source.name);
+    assert.equal(product.article, source.article);
+    assert.deepEqual(product.specifications, [`${expected}: 160 A`, 'Original source label: 027228']);
+    assert.deepEqual(product.specificationEntries, source.specifications);
+  }
+});
