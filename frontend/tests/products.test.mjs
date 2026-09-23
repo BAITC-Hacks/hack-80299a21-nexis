@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normaliseProduct, canOffer, nullableNumber, productUrl } from '../src/chat/products.ts';
+import { normaliseProduct, canOffer, nullableNumber, productUrl, offeredQuantity } from '../src/chat/products.ts';
 
 test('structured specifications become readable name/value strings', () => {
   const result = normaliseProduct({ id: 1, specifications: [{ name: 'Ток', value: '16 А' }, { name: 'Полюса', value: 3 }, { name: 'Серия', value: ['A', 'B'] }] });
@@ -39,4 +39,12 @@ test('unsafe certificate/image URLs are rejected', () => {
 test('invalid numeric facts are never coerced to real stock or price', () => {
   for (const value of [null, undefined, '', '23', false, -1, NaN, Infinity]) assert.equal(nullableNumber(value), null);
   assert.equal(nullableNumber(0), 0);
+});
+test('matching card starts with the exact pending-offer quantity', () => {
+  const product = normaliseProduct({ id: 42 });
+  assert.equal(offeredQuantity(product, { product_id: 42, quantity: 2 }), 2);
+  assert.equal(offeredQuantity(product, { product_id: 43, quantity: 2 }), undefined);
+  assert.equal(offeredQuantity(product, null), undefined);
+  assert.equal(offeredQuantity(product, { product_id: 42, quantity: 0 }), undefined);
+  assert.equal(offeredQuantity(product, { product_id: 42, quantity: 1.5 }), undefined);
 });

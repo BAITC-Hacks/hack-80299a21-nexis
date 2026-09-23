@@ -4,7 +4,7 @@ import { copy } from './chat/i18n';
 import { element as $, escapeHtml as esc, safeExternalUrl } from './chat/dom';
 import { renderReasoningTimeline } from './chat/reasoning';
 import { ApiClient, apiLanguage } from './chat/api';
-import { canOffer, normaliseProduct } from './chat/products';
+import { canOffer, normaliseProduct, offeredQuantity } from './chat/products';
 import type { Cart, CartResult, ChatResponse, HistoryMessage, Language, Offer, Product, ProductSource, ReasoningStep, UploadResponse } from './chat/types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -255,7 +255,7 @@ async function showChat(text: string) {
   clearOffers();
   const cards = (data.sources || []).map(register).filter((p): p is Product => !!p);
   let content = reasoning(data.reasoning_steps || []) + renderText(data.answer) + warnings(data.warnings) +
-    cards.map((product) => renderProduct(product)).join('') +
+    cards.map((product) => renderProduct(product, offeredQuantity(product, data.pending_offer))).join('') +
     (data.knowledge_sources || []).map((source) => safeLink(source.source_url, source.title, 'certificate-link')).join('');
   if (data.pending_offer) content += inlineOffer(data.pending_offer);
   if (data.cart_updated && data.cart_url) content += safeLink(data.cart_url, t().checkout, 'certificate-link');

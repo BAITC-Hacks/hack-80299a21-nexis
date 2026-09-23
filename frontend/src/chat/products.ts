@@ -1,4 +1,4 @@
-import type { Product, ProductSource } from './types';
+import type { Offer, Product, ProductSource } from './types';
 
 export function nullableNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -36,4 +36,10 @@ export function normaliseProduct(source: ProductSource): Product | null {
 
 export function canOffer(product: Product): boolean {
   return product.priceVerified && product.stockVerified && product.price !== null && product.price > 0 && product.stock !== null && product.stock >= product.minimum;
+}
+
+/** Keep a product card aligned with the exact quantity proposed by the agent. */
+export function offeredQuantity(product: Product, offer?: Offer | null): number | undefined {
+  return offer?.product_id === product.id && Number.isSafeInteger(offer.quantity) && offer.quantity > 0
+    ? offer.quantity : undefined;
 }
