@@ -301,7 +301,15 @@ class AgentService:
             plan.followup = True
         compare_last = "compare" in plan.intents and not plan.explicit_identifier and len(state.get("candidate_ids", [])) >= 2
         parameter_revision = bool(plan.constraints and not plan.explicit_identifier and state.get("constraints") and (family or state.get("topic") in {"breaker", "cable"}))
-        if compare_last:
+        comparison_missing = []
+        if plan.product_ids:
+            for pid in plan.product_ids:
+                detail = self._detail(pid, True)
+                self._step(steps, "get_product_detail", success=bool(detail))
+                if detail: products.append(detail)
+                else: comparison_missing.append(pid)
+            if comparison_missing: warnings.append("catalog_match_unavailable")
+        elif compare_last:
             ids = state["candidate_ids"][:3]
             if plan.ordinal is not None and original_selected_id:
                 ids = list(dict.fromkeys([original_selected_id, state["candidate_ids"][plan.ordinal]]))
@@ -344,6 +352,9 @@ class AgentService:
                 log.info("planner_unavailable request_id=%s error_type=%s", _request.get()["request_id"], type(error).__name__)
                 warnings.append("llm_unavailable_rules_used")
 
+        if plan.product_ids and not products:
+            return respond(composer.text("not_found", language), mode=mode,
+                           warnings=warnings + ["catalog_match_unavailable"])
         if not products and plan.answer_kind == "general":
             if articles: self._step(steps, "query_knowledge_base")
             return respond(composer.knowledge_answer(articles, language, evidence.model_text), articles=articles, mode=mode,
@@ -424,6 +435,11 @@ class AgentService:
         if selected: self.context.update(session_id, quantity=requested)
         paragraphs = []
         matrix = None
+        if comparison_missing:
+            ids = ", ".join(map(str, comparison_missing))
+            paragraphs.append(say(f"Не удалось проверить товары с ID {ids}. Сравнение включает только проверенные карточки.",
+                                  f"ID {ids} тауарларын тексеру мүмкін болмады. Салыстыруға тек тексерілген тауарлар енгізілді.",
+                                  f"Products with IDs {ids} could not be verified. Only verified products are included in the comparison."))
         if "compare" in plan.intents and len(sources) > 1:
             paragraphs.append(say("Сравнение найденных товаров:", "Табылған тауарларды салыстыру:", "Comparison of the selected products:"))
             matrix = composer.comparison(sources, language)

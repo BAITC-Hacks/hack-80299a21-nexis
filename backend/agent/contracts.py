@@ -18,6 +18,7 @@ class AgentPlan:
     answer_kind: str = "general"
     query: str = ""
     knowledge_queries: list[str] = field(default_factory=list)
+    product_ids: list[int] = field(default_factory=list)
 
 
 @dataclass

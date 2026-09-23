@@ -110,11 +110,28 @@ def canonical_query(message, family=None, constraints=None):
     return query
 
 
+def comparison_product_ids(message):
+    """Read a bounded, explicitly labelled ID list; never reinterpret budgets or ratings."""
+    text = message.lower()
+    if not re.search(r"сравни|сравнение|салыстыр|compare|comparison", text): return []
+    if re.search(r"\b(?:артикул\w*|sku|articles?|ean|gtin|barcode|штрихкод\w*)\b", text): return []
+    labelled = re.findall(r"\b(?:id|идентификатор)(?:\s+товара)?\s*[:#№]?\s*(\d{1,10})(?![\w.])", text)
+    if len(labelled) >= 2:
+        return list(dict.fromkeys(int(value) for value in labelled if int(value) > 0))[:3]
+    labels = r"(?:products?|товар(?:ы|а|ов)?|тауар(?:лар(?:ын|ды)?|ды)?|ids|идентификаторы)"
+    separator = r"(?:,|;|&|\b(?:and|и|және|мен|пен|vs|versus)\b)"
+    numbers = r"\d{1,10}(?![\w.])(?:\s*" + separator + r"\s*(?:id\s*[:#]?\s*)?\d{1,10}(?![\w.])){1,4}"
+    match = re.search(r"\b" + labels + r"\s*[:#№]?\s*(" + numbers + r")", text)
+    match = match or re.search(r"(?<![\w.])(" + numbers + r")\s+" + labels + r"\b", text)
+    return list(dict.fromkeys(int(value) for value in re.findall(r"\d+", match[1]) if int(value) > 0))[:3] if match else []
+
+
 def route(message, state=None):
     state, text = state or {}, message.lower().strip()
     plan = AgentPlan(quantity=quantity(message), budget=budget(message), city=city(message), constraints=electrical_constraints(message))
+    plan.product_ids = comparison_product_ids(message)
     plan.explicit_identifier = bool(re.search(r"\b(?:id|sku|артикул|article|ean|gtin|штрихкод)\b\s*[:#]?\s*[\w-]*\d|\b[\w]+[-_]\d{3,}\b", text)
-                                    or re.fullmatch(r"\d{4,19}", text))
+                                    or re.fullmatch(r"\d{4,19}", text) or plan.product_ids)
     plan.family = "breaker" if re.search(r"автомат|выключател|breaker|ажыратқыш", text) else "cable" if re.search(r"кабел|провод|cable|wire", text) else None
     plan.product_hint = plan.explicit_identifier or bool(plan.family or re.search(r"светильник|ламп|тауар|product|артикул|\bid\b", text))
     is_terms = bool(re.search(r"оплат|достав|самовывоз|возврат|вернут|обмен|регистрац|минимальн|партия|delivery|shipping|payment|returns?|refund|registration|minimum|төлем|жеткіз|қайтар|тіркел|ең аз", text))
