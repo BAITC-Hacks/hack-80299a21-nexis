@@ -1,0 +1,37 @@
+name: nexis
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8000"
+      NEXIS_DB_PATH: /data/nexis.sqlite3
+      TESSERACT_CMD: /usr/bin/tesseract
+      BACKEND_PUBLIC_URL: ${NEXIS_PUBLIC_URL:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - nexis_data:/data
+    init: true
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  nexis_data:

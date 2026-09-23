@@ -134,6 +134,7 @@ class CartService:
             token = secrets.token_urlsafe(24)
             offer = {"product_id": product_id, "product_name": detail["name"], "article": detail.get("article", ""),
                      "quantity": quantity, "price": detail["price"], "stock_available": detail["quantity"],
+                     "operation": "add",
                      "cart_mode": "demo", "expires_in_seconds": OFFER_TTL,
                      "data_quality_warnings": detail.get("data_quality_warnings", [])}
             db.execute("INSERT OR REPLACE INTO offers VALUES (?,?,?,?,?)", (key, token, json.dumps(offer, ensure_ascii=False), self.clock() + OFFER_TTL, channel))
@@ -150,14 +151,79 @@ class CartService:
         with self.db() as db:
             db.execute("DELETE FROM offers WHERE session=? AND channel=?", (key, channel))
 
-    def _offer(self, db, key, token, product_id, quantity):
+    def _offer(self, db, key, token, product_id, quantity, operation="add"):
         row = db.execute("SELECT * FROM offers WHERE session=? AND expires>=?", (key, self.clock())).fetchone()
         if not row or not isinstance(token, str) or not secrets.compare_digest(row["token"], token):
             raise ServiceError("Подтверждение не найдено, использовано или истекло. Выберите товар заново.", "invalid_offer", 409)
         offer = json.loads(row["data"])
-        if offer["product_id"] != product_id or offer["quantity"] != quantity:
+        if offer["product_id"] != product_id or offer["quantity"] != quantity or offer.get("operation", "add") != operation:
             raise ServiceError("Товар или количество отличаются от предложения.", "offer_mismatch", 409)
         return offer
+
+    @staticmethod
+    def _change_quantity(quantity):
+        if type(quantity) is not int or not 0 <= quantity <= 100000:
+            raise ServiceError("Укажите целое количество от 0 до 100000; 0 удаляет позицию.", "invalid_quantity", 422)
+
+    def prepare_change(self, session_id, product_id, quantity):
+        key = self.session(session_id)
+        self._change_quantity(quantity)
+        # Deleting a local item must remain possible during a partner API outage.
+        detail = self._product(product_id) if quantity else None
+        with self.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = next((item for item in self._items(db, key) if item["product_id"] == product_id), None)
+            if not existing:
+                raise ServiceError("Товара нет в корзине. Обновите её состояние.", "cart_item_not_found", 404)
+            if quantity == existing["quantity"]:
+                raise ServiceError("Это количество уже установлено.", "quantity_unchanged", 409)
+            if detail:
+                self._check_stock(detail, quantity, 0)
+            source = detail or existing
+            offer = {"product_id": product_id, "product_name": source["name"], "article": source.get("article", ""),
+                     "quantity": quantity, "previous_quantity": existing["quantity"], "price": source["price"],
+                     "stock_available": detail["quantity"] if detail else None, "operation": "set_quantity",
+                     "cart_mode": "demo", "expires_in_seconds": OFFER_TTL,
+                     "data_quality_warnings": source.get("data_quality_warnings", [])}
+            token = secrets.token_urlsafe(24)
+            db.execute("INSERT OR REPLACE INTO offers VALUES (?,?,?,?,?)", (key, token, json.dumps(offer, ensure_ascii=False), self.clock() + OFFER_TTL, "change"))
+        return {**offer, "offer_token": token}
+
+    def confirm_change(self, session_id, product_id, quantity, token, confirmed):
+        key = self.session(session_id)
+        self._change_quantity(quantity)
+        if confirmed is not True:
+            raise ServiceError("Подтвердите изменение корзины.", "confirmation_required", 409)
+        with self.db() as db:
+            self._offer(db, key, token, product_id, quantity, "set_quantity")
+        detail = self._product(product_id) if quantity else None
+        with self.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            offer = self._offer(db, key, token, product_id, quantity, "set_quantity")
+            existing = next((item for item in self._items(db, key) if item["product_id"] == product_id), None)
+            if not existing or existing["quantity"] != offer["previous_quantity"]:
+                raise ServiceError("Корзина изменилась. Обновите её и подтвердите новое предложение.", "cart_changed", 409)
+            if detail:
+                if detail["price"] != offer["price"]:
+                    raise ServiceError("Цена изменилась. Получите новое предложение и подтвердите его.", "price_changed", 409)
+                self._check_stock(detail, quantity, 0)
+                item = {**existing, "quantity": quantity, "price": detail["price"], "name": detail["name"],
+                        "article": detail.get("article", ""), "unit": detail.get("unit", "шт."),
+                        "image": detail.get("image"), "url": detail.get("url")}
+                db.execute("UPDATE cart_items SET data=? WHERE session=? AND product_id=?", (json.dumps(item, ensure_ascii=False), key, product_id))
+            else:
+                db.execute("DELETE FROM cart_items WHERE session=? AND product_id=?", (key, product_id))
+            db.execute("DELETE FROM offers WHERE session=?", (key,))
+        cart = self.snapshot(session_id)
+        answer = (f"Количество «{offer['product_name']}» изменено: {quantity}." if quantity
+                  else f"«{offer['product_name']}» удалён из демонстрационной корзины.")
+        answer += f"\n[Открыть актуальную корзину]({cart['checkout_url']})"
+        summary = {"product_name": offer["product_name"], "article": offer["article"], "price": offer["price"],
+                   "quantity": quantity, "quantity_added": quantity - offer["previous_quantity"], "operation": "set_quantity",
+                   "stock_available": detail["quantity"] if detail else None,
+                   "cart_items_count": cart["total_items"], "cart_url": cart["checkout_url"], "cart_mode": "demo"}
+        return {"success": True, "answer": answer, "message": answer, "cart_confirmation": summary,
+                "cart": cart["items"], "cart_url": cart["checkout_url"], "cart_mode": "demo"}
 
     def confirm(self, session_id, product_id, quantity, token, confirmed):
         key = self.session(session_id)

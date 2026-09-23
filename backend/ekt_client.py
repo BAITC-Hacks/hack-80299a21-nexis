@@ -143,36 +143,72 @@ class EktClient:
     def _key(text):
         return re.sub(r"[\W_]+", "", str(text).lower())
 
+    @staticmethod
+    def normalize_query(text):
+        text = str(text).lower().replace("ё", "е").replace("×", "x")
+        text = re.sub(r"(?<=\d)\s*[хx*]\s*(?=\d)", "x", text)
+        text = re.sub(r"(?<=\d),(?=\d)", ".", text)
+        for pattern, replacement in ((r"\bавтоматическ\w*\s+выключател\w*", "автомат"),
+                                     (r"\bавтомат(?:ы|а|ов|ом)?\b", "автомат"),
+                                     (r"\bкабел[ьяеи]\w*\b", "кабель"),
+                                     (r"\bсветодиодн\w*", "led"),
+                                     (r"\bлампочк\w*", "лампа")):
+            text = re.sub(pattern, replacement, text)
+        return text
+
     def search_products(self, query, limit=5):
-        query = str(query or "").lower().strip()
+        query = self.normalize_query(query or "").strip()
         if not query:
             return []
-        # A numeric product id can be retrieved even outside the sampled pages.
-        direct = re.fullmatch(r"(?:id\s*[:=]?\s*)?(\d{1,10})", query)
+        # Explicit ID labels are unambiguous even in a natural-language sentence.
+        # A labelled article must never be interpreted as a product ID.
+        article_query = bool(re.search(r"\b(?:артикул\w*|sku)\b", query))
+        direct = None if article_query else re.search(r"\b(?:id|идентификатор)(?:\s+товара)?\s*[:=#№]?\s*(\d{1,10})\b", query)
         if direct:
             detail = self.get_product_detail(int(direct[1]))
-            if detail:
-                return [{**detail, "_match_type": "exact", "_match_score": 100}]
+            return [{**detail, "_match_type": "exact", "_match_score": 100}] if detail else []
         self.preload_catalog()
+        bare_number = re.fullmatch(r"\d{1,10}", query)
         query = re.sub(r"\b\d+\s*(?:шт\.?|штук|pcs|ед\.?)\b", "", query)
         words = re.findall(r"[\w./-]+", query)
         keys = {self._key(word) for word in words}
         exact, scored = [], []
         stop = {"найди", "найдите", "покажи", "покажите", "есть", "мне", "нужен", "нужно", "нужна",
-                "купить", "хочу", "товар", "артикул", "пожалуйста", "наличие", "сертификат", "шт", "для", "это"}
+                "купить", "хочу", "товар", "артикул", "пожалуйста", "наличие", "сертификат", "шт", "для", "это",
+                "по", "подбери", "подберите", "какой", "какая", "какие", "ли", "на", "характеристики", "цена"}
         tokens = [word for word in words if len(word) > 1 and word not in stop]
+        requested_specs = {}
+        for field, pattern in (("current", r"(?<![\w.])(\d+(?:\.\d+)?)\s*[аa]\b"),
+                               ("poles", r"(?<![\w.])(\d+)\s*[pрф]\b"),
+                               ("voltage", r"(?<![\w.])(\d+)\s*[вv]\b"),
+                               ("breaking_capacity", r"(?<![\w.])(\d+(?:\.\d+)?)\s*[кk][аa]\b")):
+            found = re.search(pattern, query)
+            if found:
+                requested_specs[field] = number(found[1])
         for item in self._catalog_cache:
             props = item.get("properties") or {}
-            identifiers = [item["id"], item.get("article"), props.get("ARTIKULPOSTAVSHCHIKA")]
+            identifiers = [item.get("article"), props.get("ARTIKULPOSTAVSHCHIKA")]
+            if not article_query and not bare_number:
+                identifiers.append(item["id"])
             if any(self._key(value) in keys for value in identifiers if value):
                 exact.append({**item, "_match_type": "exact", "_match_score": 100})
                 continue
-            haystack = f"{item['name']} {item.get('article', '')} {' '.join(map(str, props.values()))}".lower()
+            haystack = self.normalize_query(f"{item['name']} {item.get('article', '')} {' '.join(map(str, props.values()))}")
+            if any(item.get("technical", {}).get(field) != expected for field, expected in requested_specs.items()):
+                continue
+            dimensions = re.findall(r"\b\d+x\d+(?:\.\d+)?\b", query)
+            if dimensions and not all(re.search(rf"(?<![\d.]){re.escape(dimension)}(?![\d.])", haystack) for dimension in dimensions):
+                continue
             score = sum(1 for word in tokens if word in haystack)
             threshold = 1 if len(tokens) <= 2 else 2
             if score >= threshold:
                 scored.append({**item, "_match_type": "text", "_match_score": score,
                                "_match_coverage": score / max(len(tokens), 1)})
+        if bare_number and not exact:
+            detail = self.get_product_detail(int(bare_number[0]))
+            return [{**detail, "_match_type": "exact", "_match_score": 100}] if detail else []
+        if article_query:
+            return exact[:limit]
         return (exact or sorted(scored, key=lambda item: item["_match_score"], reverse=True))[:limit]
 
     def get_product_detail(self, product_id, force_refresh=False):

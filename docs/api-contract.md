@@ -1,7 +1,7 @@
-# NEXIS backend API contract, v2
+# NEXIS backend API contract, v2.1
 
 Base URL: http://localhost:8000. Swagger: /docs. Prices are KZT.
-CORS: localhost ports 3000 and 5173; additional origins via CORS_ORIGINS.
+CORS: localhost and 127.0.0.1 ports 3000 and 5173; additional origins via CORS_ORIGINS.
 Errors: {"detail":"human-readable message","code":"stable_code"} (validation: FastAPI 422).
 
 ## Sessions and privacy
@@ -50,6 +50,13 @@ Confirmation is a standalone phrase such as "Да, добавь" or "Иә, қо�
 Negations, quotations, hypothetical questions and changed quantities do not authorize mutation.
 Other substantive messages invalidate the previous chat offer.
 The LLM has read-only tools; it cannot grant itself confirmation or mutate the cart.
+The server retains a bounded, process-local selection context for 30 minutes (up to
+1024 hashed session keys): selected product ID, quantity, city, budget, category.
+Full messages are not retained. Follow-ups such as "А в Алматы?", "Нужно пять" and
+"Подешевле" use this context; a changed quantity requires a new offer and confirmation.
+Greetings and broad requests receive guidance/clarifying questions. Cheaper options
+require checked compatible parameters, a lower price and stock in the requested city.
+Context expires on timeout/server restart; the persisted cart remains available.
 
 ## Cart
 
@@ -67,6 +74,20 @@ The LLM has read-only tools; it cannot grant itself confirmation or mutate the c
   Responses use Cache-Control:no-store and Referrer-Policy:no-referrer.
 
 cart_confirmation: {product_name,article,price,quantity_added,stock_available,cart_items_count,cart_url,cart_mode}.
+Cart editing uses the same two-step confirmation policy:
+- POST /api/cart/change-offer body {product_id,quantity}: quantity is the desired absolute
+  integer quantity (0 means removal). Returns the normal offer fields plus
+  operation:"set_quantity",previous_quantity. The item must already exist.
+- POST /api/cart/change body {product_id,quantity,confirmed:true,offer_token} consumes this
+  offer once and returns {success,answer,cart,cart_url,cart_mode,cart_confirmation}.
+  A changed original cart quantity or price invalidates the offer. Positive quantities
+  require a fresh stock/price check; removal can proceed when the catalog is unavailable.
+Add offers cannot authorize changes and change offers cannot authorize additions.
+Never issue the second request until the buyer confirms the displayed server offer.
+For change responses cart_confirmation includes operation:"set_quantity", quantity
+(new absolute value), quantity_added (signed difference), and stock_available:null
+for removals. Render answer for the operation rather than labelling a negative delta
+as an addition. quantity_unchanged is 409; a missing cart item is 404.
 Cart survives backend restarts. It does not reserve stock or create an ekt.kz order.
 The partner supplied read-only catalog endpoints, no cart API. partner_cart_url is
 informational; it never claims to contain the demo cart. No guessed partner write endpoint.
@@ -105,3 +126,14 @@ This document defines the other response payloads. Cart quantity must be an inte
 Unknown minimum order quantities and packaging multiples are null. Offers also include
 data_quality_warnings; display these before asking for confirmation. Chat includes cart_mode.
 Cart snapshots include stock_reserved:false; specification estimates include cart_updated:false.
+
+## Frontend integration v2.1
+
+The UI obtains sessions from /api/session, uses X-Session-Id, and renews expired sessions
+without replaying writes. UI language kz maps to API kk. English UI uses API ru until
+English consultation is explicitly supported; the language of the answer is disclosed.
+Real API failures remain errors. Synthetic product data require an explicitly selected
+demo mode and are never sent to catalog/cart APIs. Quick prompts use real chat requests.
+Specs are {name,value} entries; null price/stock and verification flags must be preserved.
+Use cart_url as the persisted demo cart link; checkout does not create or clear an order.
+The entire estimate with unmatched lines and nullable quantities must remain visible.

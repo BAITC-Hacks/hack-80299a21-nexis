@@ -1,3 +1,5 @@
+> Историческая оценка backend. Текущее решение, включая frontend и Docker: [архитектура](architecture.md), [аудит](frontend-backend-audit.md), [план](integration-plan.md).
+
 # Соответствие решения кейсу ekt.kz
 
 Этот документ описывает реализованный backend. Подробная схема — в [architecture.md](architecture.md), данные API — в [api-contract.md](api-contract.md).

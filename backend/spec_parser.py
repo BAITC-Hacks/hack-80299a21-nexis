@@ -1,4 +1,5 @@
 """Bounded document extraction and conservative specification matching."""
+import csv
 import io
 import os
 import re
@@ -165,11 +166,15 @@ class SpecificationParser:
         for line in text.splitlines():
             if not line.strip():
                 continue
-            cells = [cell.strip() for cell in line.split("\t")]
+            delimiter = "\t" if "\t" in line else ";" if ";" in line else None
+            try:
+                cells = [cell.strip() for cell in next(csv.reader([line], delimiter=delimiter, strict=True))] if delimiter else [line.strip()]
+            except csv.Error:
+                raise ServiceError("В табличной строке нарушены кавычки или разделители. Проверьте файл.", "invalid_table_row", 422)
             lowered = [cell.lower() for cell in cells]
             quantity_columns = [i for i, cell in enumerate(lowered) if re.fullmatch(r"кол[ -]?во\.?|количество|qty|quantity|саны", cell)]
             if quantity_columns:
-                header = {"quantity": quantity_columns[0],
+                header = {"quantity": quantity_columns[0], "delimiter": delimiter,
                           "article": next((i for i, cell in enumerate(lowered) if cell in {"артикул", "код", "sku", "article"}), None),
                           "name": next((i for i, cell in enumerate(lowered) if cell in {"наименование", "название", "description", "товар"}), None),
                           "unit": next((i for i, cell in enumerate(lowered) if re.fullmatch(r"ед\.?\s*изм\.?|единица|unit", cell)), None)}
@@ -179,8 +184,11 @@ class SpecificationParser:
                 ignored.append(line)
                 continue
             quantity, unit, query = None, None, line
-            if header and len(cells) > header["quantity"]:
-                quantity = number(cells[header["quantity"]])
+            if header and delimiter and delimiter == header["delimiter"] and len(cells) > header["quantity"]:
+                raw_quantity = cells[header["quantity"]]
+                # A quantity column is explicit. Preserve integer-valued Excel
+                # cells ("3.0"), but do not coerce exponents, signs or decimals.
+                quantity = number(raw_quantity) if re.fullmatch(r"\d+(?:[.,]0+)?", raw_quantity) else None
                 selected = [cells[header[key]] for key in ("article", "name") if header[key] is not None and header[key] < len(cells)]
                 query = " ".join(selected) if selected else " ".join(cells[:header["quantity"]])
                 if header["unit"] is not None and header["unit"] < len(cells):

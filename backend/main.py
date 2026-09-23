@@ -62,6 +62,16 @@ class CartItem(CartOfferRequest):
     offer_token: str | None = Field(default=None, max_length=128)
 
 
+class CartChangeRequest(Payload):
+    product_id: int = Field(strict=True, ge=1)
+    quantity: int = Field(strict=True, ge=0, le=100000)
+
+
+class CartChange(CartChangeRequest):
+    confirmed: StrictBool = False
+    offer_token: str | None = Field(default=None, max_length=128)
+
+
 class EscalationRequest(Payload):
     comment: str = Field(default="", max_length=2000)
 
@@ -103,10 +113,10 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
     carts = carts or (agent_service.carts if catalog is ekt_client else CartService(catalog))
     agent = agent or (agent_service if carts is agent_service.carts else AgentService(catalog, carts))
     parser = parser or SpecificationParser(catalog)
-    app = FastAPI(title="NEXIS — консультант ekt.kz", version="2.0.0")
+    app = FastAPI(title="NEXIS — консультант ekt.kz", version="2.1.0")
     app.add_middleware(UploadSizeLimit)
     app.state.catalog, app.state.carts, app.state.agent = catalog, carts, agent
-    origins = ["http://localhost:3000", "http://localhost:5173"]
+    origins = [f"http://{host}:{port}" for host in ("localhost", "127.0.0.1") for port in (3000, 5173)]
     origins += [value.strip() for value in os.getenv("CORS_ORIGINS", "").split(",") if value.strip()]
     buckets = OrderedDict()
     limit = request_limit or env_int("REQUESTS_PER_MINUTE", 60, 1, 10000)
@@ -128,11 +138,12 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
                     bucket.popleft()
                 if len(bucket) >= cap:
                     return JSONResponse({"detail": "Слишком много запросов. Повторите через минуту.", "code": "rate_limited"},
-                                        status_code=429, headers={"Retry-After": "60"})
+                                        status_code=429, headers={"Retry-After": "60", "Cache-Control": "no-store",
+                                                                 "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"})
             for key in keys:
                 buckets[key].append(now)
                 buckets.move_to_end(key)
-            if len(buckets) > 10000:
+            while len(buckets) > 10000:
                 buckets.popitem(last=False)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -157,7 +168,7 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
 
     @app.get("/api/health")
     def health():
-        return {"status": "online", "service": "NEXIS ekt.kz backend", "team": "NEXIS", "version": "2.0.0",
+        return {"status": "online", "service": "NEXIS ekt.kz backend", "team": "NEXIS", "version": "2.1.0",
                 "agent_ready": bool(catalog.auth), "agent_mode": "tools" if agent.client else "rules",
                 "catalog_configured": bool(catalog.auth), "catalog": catalog.coverage(),
                 "ocr_available": ocr_available(), "cart_persistence": "sqlite",
@@ -235,6 +246,14 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
         result = carts.confirm(session(session_id, x_session_id), body.product_id, body.quantity, body.offer_token, body.confirmed)
         result.pop("product", None)
         return result
+
+    @app.post("/api/cart/change-offer")
+    def change_offer(body: CartChangeRequest, session_id: str | None = None, x_session_id: str | None = Header(None)):
+        return carts.prepare_change(session(session_id, x_session_id), body.product_id, body.quantity)
+
+    @app.post("/api/cart/change")
+    def change(body: CartChange, session_id: str | None = None, x_session_id: str | None = Header(None)):
+        return carts.confirm_change(session(session_id, x_session_id), body.product_id, body.quantity, body.offer_token, body.confirmed)
 
     @app.get("/api/cart/export")
     def export(session_id: str | None = None, x_session_id: str | None = Header(None)):

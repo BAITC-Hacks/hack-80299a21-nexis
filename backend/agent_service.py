@@ -7,6 +7,7 @@ import time
 from openai import OpenAI
 
 from cart_service import CartService
+from dialogue_context import DialogueContext
 from ekt_client import ekt_client
 from knowledge_base import CONTACTS_URL, KB_ARTICLES, search_knowledge_base, source_metadata
 from settings import ServiceError
@@ -40,6 +41,7 @@ class AgentService:
         key = os.getenv("OPENAI_API_KEY", "")
         self.client = client or (OpenAI(api_key=key, timeout=6, max_retries=0) if key and not key.startswith("your_") else None)
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.context = DialogueContext(clock=catalog.clock if hasattr(catalog, "clock") else time.time)
 
     @staticmethod
     def _is_explicit_confirmation(message):
@@ -53,8 +55,36 @@ class AgentService:
 
     @staticmethod
     def quantity(message):
-        match = re.search(r"(?<![\w-])([1-9]\d{0,4})\s*(?:шт\.?|штук|ед\.?|дана|pcs)\b", message.lower())
-        return int(match[1]) if match else None
+        text = message.lower().strip().rstrip(".!")
+        match = re.search(r"(?<![\w.,+-])([+-]?\d+(?:[.,]\d+)?)\s*(?:шт\.?|штук|ед\.?|дана|pcs)\b", text)
+        match = match or re.fullmatch(r"(?:нужно|нужны|нужен|хочу|количество\s*[:=]?)\s*([+-]?\d+(?:[.,]\d+)?)(?:\s*штук)?", text)
+        if match:
+            # Keep invalid integer quantities visible to the cart validator;
+            # never silently truncate 1.5 to 1 or read its trailing 5.
+            return float(match[1].replace(",", ".")) if re.search(r"[.,]", match[1]) else int(match[1])
+        words = {"ноль": 0, "один": 1, "одна": 1, "одну": 1, "два": 2, "две": 2, "три": 3,
+                 "четыре": 4, "пять": 5, "шесть": 6, "семь": 7, "восемь": 8, "девять": 9, "десять": 10}
+        found = re.fullmatch(r"(?:нужно|нужны|нужен|хочу)?\s*(" + "|".join(words) + r")(?:\s*(?:шт\.?|штук))?", text)
+        return words[found[1]] if found else None
+
+    @staticmethod
+    def budget(message):
+        found = re.search(r"(?:бюджет\s*[:=]?|до|не дороже)\s*(\d+(?:[.,]\d{1,2})?)(?:\s*(?:₸|тг|тенге))?\b", message.lower())
+        return float(found[1].replace(",", ".")) if found else None
+
+    @staticmethod
+    def clarification(message, kk=False):
+        """Ask for missing electrical parameters before offering broad matches."""
+        text = message.lower()
+        if re.search(r"\d|артикул|\bid\b|sku", text):
+            return None, None
+        if re.search(r"автомат|выключател", text):
+            return "breaker", ("Автоматтың номиналды тогын, полюстер санын және кернеуін немесе артикулын көрсетіңіз. Параметрлер белгісіз болса, маманнан нақтылаңыз." if kk else
+                               "Для подбора автомата укажите номинальный ток, число полюсов и напряжение либо артикул. Если параметры неизвестны, уточните их у специалиста.")
+        if re.search(r"кабел|провод", text):
+            return "cable", ("Кабельдің маркасын, талшықтар саны мен қимасын немесе артикулын көрсетіңіз." if kk else
+                             "Для подбора кабеля укажите марку, число жил и сечение, например «ВВГ 3×2,5», либо артикул.")
+        return None, None
 
     @staticmethod
     def sensitive(message):
@@ -155,6 +185,7 @@ class AgentService:
     def process_message(self, message, history, session_id, language="ru"):
         self.carts.session(session_id)
         steps, warnings = [], []
+        context = self.context.get(session_id)
         kk = language == "kk"
         def say(ru, kz):
             return kz if kk else ru
@@ -197,18 +228,67 @@ class AgentService:
                                                   f"Байланысу үшін филиалды таңдаңыз: {CONTACTS_URL}. CRM-ге автоматты жіберу қосылмаған."), steps,
                                   articles=[next(item for item in KB_ARTICLES if item["id"] == "contacts")])
 
+        if re.fullmatch(r"(?:привет|здравствуйте|добрый (?:день|вечер|утро)|сәлем|сәлеметсіз бе)[\s!.]*", message.lower()):
+            return self._response(session_id, say(
+                "Здравствуйте! Помогу найти электротовары, проверить характеристики и наличие, подобрать аналог или разобрать спецификацию. Напишите артикул либо тип и параметры товара.",
+                "Сәлеметсіз бе! Тауарды табуға, сипаттамалары мен қорын тексеруге және ұқсасын таңдауға көмектесемін. Артикулын немесе қажетті параметрлерін жазыңыз."), steps)
+
+        family, question = self.clarification(message, kk)
+        if question:
+            self.context.update(session_id, family=family, product_id=None, quantity=None)
+            return self._response(session_id, question, steps)
+
+        current_city, current_quantity, current_budget = self.city(message), self.quantity(message), self.budget(message)
+        if current_city or current_budget is not None:
+            context = self.context.update(session_id, **({"city": current_city} if current_city else {}),
+                                          **({"budget": current_budget} if current_budget is not None else {}))
+        if re.search(r"(?:любой|другой)\s+город|без\s+(?:ограничения\s+)?города|все\s+склады", message.lower()):
+            context = self.context.update(session_id, city=None)
+
         articles = search_knowledge_base(message)
-        product_hint = bool(re.search(r"\d{4,}|[a-zа-я]+[-_]\d+|автомат|кабел|провод|светильник|артикул|тауар", message.lower()))
-        if articles and not product_hint and not (pending and re.search(r"сертифик|характерист|қасиет", message.lower())):
+        product_hint = bool(re.search(r"\d{4,}|[a-zа-я]+[-_]\d+|автомат|кабел|провод|светильник|артикул|тауар|\bid\b", message.lower()))
+        cheaper = current_budget is not None or bool(re.search(r"подешевле|дешевле|арзанырақ|бюджет|не дороже", message.lower()))
+        followup = not product_hint and bool(current_city or current_quantity is not None or current_budget is not None or cheaper or
+                                             re.search(r"сертифик|характерист|қасиет|этот|этого|его|он |него|наличи|склад", message.lower()))
+        if articles and not product_hint and not (context.get("product_id") and followup):
             self._step(steps, "query_knowledge_base", "Найдены правила покупки и ссылки на источники")
             answer = "\n\n".join((item["content_kk"] if kk and item["content_kk"] else item["content"]) +
                                  f"\n{item['source_url']}" for item in articles)
             return self._response(session_id, answer, steps, articles=articles)
 
-        products, mode = [], "rules"
-        if pending and not product_hint and re.search(r"сертифик|характерист|қасиет", message.lower()):
-            detail = self.catalog.get_product_detail(pending["product_id"])
+        products, mode, comparison_note = [], "rules", None
+        if followup and context.get("product_id"):
+            detail = self.catalog.get_product_detail(context["product_id"], force_refresh=True)
             products = [detail] if detail else []
+            self._step(steps, "get_product_detail", "Проверен выбранный в этой сессии товар")
+            if not detail:
+                return self._response(session_id, say("Не удалось проверить выбранный товар: каталог временно недоступен. Повторите запрос позже.",
+                                                      "Таңдалған тауарды тексеру мүмкін болмады. Кейінірек қайталаңыз."), steps,
+                                      warnings=["catalog_match_unavailable"])
+            if current_quantity is not None:
+                context = self.context.update(session_id, quantity=current_quantity)
+            if cheaper and detail:
+                ceiling = context.get("budget")
+                if not detail.get("price_verified"):
+                    return self._response(session_id, say("Цена выбранного товара не проверена: сравнить стоимость пока нельзя.",
+                                                          "Таңдалған тауардың бағасы тексерілмеген."), steps, [detail])
+                products = [item for item in self.catalog.find_analogs(detail, limit=16)
+                            if item.get("price_verified") and 0 < item["price"] < detail["price"]
+                            and (ceiling is None or item["price"] <= ceiling)
+                            and (not context.get("city") or any(store.get("quantity") is not None and store["quantity"] > 0
+                                 for store in self.city_stores(item, context["city"])))]
+                products.sort(key=lambda item: item["price"])
+                self._step(steps, "find_analogs", "Проверены совместимые варианты, цена и наличие в выбранном городе")
+                if not products:
+                    return self._response(session_id, say(
+                        "Более дешёвый подтверждённый аналог с подходящими характеристиками и наличием в доступной выборке не найден. Уточните бюджет или обратитесь к менеджеру для расширенного поиска.",
+                        "Қолжетімді каталогтан параметрлері сәйкес, қоры бар арзанырақ тауар табылмады."), steps, [detail],
+                        warnings=["cheaper_match_unavailable"])
+                comparison_note = say(f"Варианты дешевле «{detail['name']}» ({detail['price']:,.2f} ₸); сравнение по проверенным параметрам.",
+                                      f"«{detail['name']}» тауарынан арзанырақ, тексерілген ұқсас тауарлар.")
+        elif followup and not context.get("product_id") and not context.get("family"):
+            return self._response(session_id, say("Уточните артикул или ID товара, для которого проверить наличие, цену или количество.",
+                                                  "Қай тауар екенін нақтылаңыз: артикулын немесе ID жазыңыз."), steps)
         elif self.client:
             try:
                 products, tool_articles = self._run_tools(message, history, steps)
@@ -217,7 +297,10 @@ class AgentService:
             except Exception:
                 warnings.append("llm_unavailable_rules_used")
         if not products:
-            products = self.execute_tool("search_products", {"query": message})
+            query = message
+            if context.get("family") and not product_hint:
+                query = ("автомат " if context["family"] == "breaker" else "кабель ") + message
+            products = self.execute_tool("search_products", {"query": query})
             self._step(steps, "search_products", "Поиск по доступной выборке каталога")
         # Every returned card is hydrated; stale page stock is never shown as live detail.
         sources = []
@@ -225,15 +308,24 @@ class AgentService:
             detail = self.catalog.get_product_detail(product["id"])
             self._step(steps, "get_product_detail", "Карточка и актуальность данных проверены")
             if detail:
+                for key in ("matched_parameters", "rationale", "recommendation_note"):
+                    if product.get(key):
+                        detail[key] = product[key]
                 sources.append(detail)
         if not sources:
             text = say("Не удалось найти и проверить товар в доступной части каталога. Уточните артикул или повторите запрос.",
                        "Қолжетімді каталогтан тауарды тексеру мүмкін болмады. Артикулды нақтылаңыз.")
             return self._response(session_id, text, steps, mode=mode, warnings=warnings + ["catalog_match_unavailable"])
 
-        city, offer = self.city(message), None
-        paragraphs = []
+        city, offer = context.get("city"), None
+        paragraphs = [comparison_note] if comparison_note else []
         selected = sources[0] if len(sources) == 1 else None
+        if len(sources) > 1 and re.search(r"сравни|сравнение|салыстыр", message.lower()):
+            # Canonical fields, never model-written specifications.
+            paragraphs.append(say("Сравнение найденных товаров:", "Табылған тауарларды салыстыру:") + "\n" +
+                              "\n".join(f"{item['article']}: " +
+                                  "; ".join(f"{spec['name']} — {spec['value']}" for spec in item.get("specifications", []))
+                                  for item in sources))
         for detail in sources:
             name = detail["name"]
             price = f"{detail['price']:,.2f} ₸" if detail.get("price_verified") else say("не проверена", "тексерілмеген")
@@ -250,8 +342,13 @@ class AgentService:
                 paragraph += "\n" + (", ".join(f"{s['name']}: {s['quantity']}" for s in stores) or say("Склад этого города не найден.", "Бұл қаладағы қойма табылмады."))
             if detail.get("data_quality_warnings"):
                 paragraph += "\n⚠️ " + "\n".join(detail["data_quality_warnings"])
+            if detail.get("rationale"):
+                paragraph += "\n" + say("Совпадающие параметры: ", "Сәйкес параметрлер: ") + detail["rationale"]
             if detail.get("stock_verified") and detail["quantity"] == 0:
-                analogs = self.catalog.find_analogs(detail, limit=3)
+                analogs = self.catalog.find_analogs(detail, limit=16 if city else 3)
+                if city:
+                    analogs = [item for item in analogs if any(s.get("quantity") is not None and s["quantity"] > 0
+                               for s in self.city_stores(item, city))][:3]
                 self._step(steps, "find_analogs", "Проверены параметры и наличие альтернатив")
                 detail["analogs"] = analogs
                 paragraph += "\n" + ("\n".join(f"{a['name']} — {a['rationale']}" for a in analogs) if analogs
@@ -259,8 +356,13 @@ class AgentService:
                 if selected and len(analogs) == 1:
                     selected = analogs[0]
             paragraphs.append(paragraph)
+        if selected:
+            requested = current_quantity if current_quantity is not None else (
+                context.get("quantity") if followup and context.get("quantity") is not None else 1)
+            self.context.update(session_id, product_id=selected["id"], quantity=requested, family=None)
+        elif not followup:
+            self.context.update(session_id, product_id=None, quantity=None, family=None)
         if selected and selected.get("stock_verified") and selected["quantity"] > 0 and not selected.get("data_quality_warnings") and not city:
-            requested = self.quantity(message) or 1
             try:
                 offer = self.carts.prepare(session_id, selected["id"], requested, channel="chat")
                 paragraphs.append(say(
@@ -271,6 +373,9 @@ class AgentService:
                 warnings.append(error.code)
         elif len(sources) > 1:
             paragraphs.append(say("Уточните артикул выбранного товара и количество.", "Таңдалған тауардың артикулы мен санын нақтылаңыз."))
+        elif city:
+            paragraphs.append(say("Это остатки выбранного города. Демонстрационная корзина не резервирует товар на складе; доступность выдачи уточните в филиале.",
+                                  "Бұл таңдалған қаланың қоры. Демонстрациялық себет қоймада тауарды резервтемейді."))
         return self._response(session_id, "\n\n".join(paragraphs), steps, sources, articles, offer, mode=mode, warnings=warnings)
 
 

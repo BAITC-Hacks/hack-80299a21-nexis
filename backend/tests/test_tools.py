@@ -39,7 +39,7 @@ class ToolsTests(APIHarness):
 
     def test_detail_selection_takes_priority_over_broad_search(self):
         self.agent.client = self.fake_client([ToolReply("search_products", '{"query":"Автомат"}'), ToolReply("get_product_detail", '{"product_id":1001}'), ToolReply()])
-        result = self.chat("Подбери автомат").json()
+        result = self.chat("Подбери автомат 16А 3P 400В").json()
         self.assertEqual([item["id"] for item in result["sources"]], [1001])
         self.assertEqual(result["pending_offer"]["product_id"], 1001)
 
