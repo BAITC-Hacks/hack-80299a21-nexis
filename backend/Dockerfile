@@ -6,6 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HOST=0.0.0.0 \
     PORT=8000 \
     NEXIS_DB_PATH=/data/nexis.sqlite3 \
+    NEXIS_KNOWLEDGE_DB_PATH=/data/knowledge.sqlite3 \
+    NEXIS_CATALOG_DB_PATH=/data/catalog.sqlite3 \
     TESSERACT_CMD=/usr/bin/tesseract
 
 WORKDIR /app
@@ -25,6 +27,7 @@ RUN groupadd --gid 10001 nexis \
     && chown nexis:nexis /data
 
 COPY --chown=nexis:nexis backend /app/backend
+COPY --chown=nexis:nexis database/knowledge /app/database/knowledge
 
 USER nexis
 EXPOSE 8000

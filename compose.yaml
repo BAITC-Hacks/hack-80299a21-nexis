@@ -11,6 +11,8 @@ services:
       HOST: 0.0.0.0
       PORT: "8000"
       NEXIS_DB_PATH: /data/nexis.sqlite3
+      NEXIS_KNOWLEDGE_DB_PATH: /data/knowledge.sqlite3
+      NEXIS_CATALOG_DB_PATH: /data/catalog.sqlite3
       TESSERACT_CMD: /usr/bin/tesseract
       BACKEND_PUBLIC_URL: ${NEXIS_PUBLIC_URL:-http://localhost:5173}
     ports:

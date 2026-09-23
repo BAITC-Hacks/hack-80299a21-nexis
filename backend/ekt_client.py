@@ -4,6 +4,8 @@ import math
 import os
 import re
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar, copy_context
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from threading import RLock
@@ -13,6 +15,9 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from settings import env_int
+from retrieval.catalog_index import CatalogIndex
+
+_deadline = ContextVar("catalog_request_deadline", default=None)
 
 
 def number(value):
@@ -69,7 +74,7 @@ SPEC_NAMES = {
 
 
 class EktClient:
-    def __init__(self, requester=None, clock=time.time):
+    def __init__(self, requester=None, clock=time.time, catalog_index=None):
         self.base = os.getenv("EKT_API_BASE", "https://ekt.kz/api").rstrip("/")
         user, password = os.getenv("EKT_API_USER", ""), os.getenv("EKT_API_PASS", "")
         self.auth = HTTPBasicAuth(user, password) if user and password else None
@@ -81,8 +86,34 @@ class EktClient:
         self._pages, self._details = {}, {}
         self._lock = RLock()
         self.last_error = None
+        self.retry_after = None
+        # Fake clients do not accidentally consume an operator's live import.
+        self.catalog_index = catalog_index if catalog_index is not None else (CatalogIndex() if requester is None else None)
+
+    @staticmethod
+    @contextmanager
+    def request_deadline(deadline_monotonic):
+        token = _deadline.set(deadline_monotonic)
+        try:
+            yield
+        finally:
+            _deadline.reset(token)
+
+    @staticmethod
+    def _parallel(function, values, max_workers=4):
+        values = list(values)
+        if not values:
+            return []
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(values))) as pool:
+            futures = [pool.submit(copy_context().run, function, value) for value in values]
+            return [future.result() for future in futures]
 
     def _request(self, path, params):
+        deadline = _deadline.get()
+        remaining = deadline - time.monotonic() if deadline is not None else None
+        if remaining is not None and remaining <= 0:
+            self.last_error = "request_deadline_exceeded"
+            return None
         if not self.auth:
             self.last_error = "credentials_missing"
             return None
@@ -90,10 +121,12 @@ class EktClient:
             response = self.requester(
                 f"{self.base}/{path}", params=params, auth=self.auth,
                 headers={"Accept": "application/json", "User-Agent": "NEXIS/2.0"},
-                timeout=(3, 6), allow_redirects=False,
+                timeout=(min(3, max(.01, remaining / 2)), min(6, max(.01, remaining / 2))) if remaining is not None else (3, 6),
+                allow_redirects=False,
             )
             if response.status_code != 200:
                 self.last_error = f"upstream_http_{response.status_code}"
+                self.retry_after = number(getattr(response, "headers", {}).get("Retry-After"))
                 return None
             data = response.json()
             self.last_error = None
@@ -108,7 +141,13 @@ class EktClient:
             if cached and not force and self.clock() - cached[0] < self.catalog_ttl:
                 return copy.deepcopy(cached[1])
         data = self._request("products", {"page": page})
+        if data is None:
+            return None
         if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            self.last_error = "invalid_catalog_page"
+            return None
+        if any(not isinstance(item, dict) or type(item.get("id")) is not int or item["id"] < 1 for item in data["items"]):
+            self.last_error = "invalid_catalog_page"
             return None
         checked = self.clock()
         items = []
@@ -125,19 +164,21 @@ class EktClient:
 
     def preload_catalog(self, pages=None, force=False):
         pages = min(pages or self.search_pages, 50)
-        with ThreadPoolExecutor(max_workers=min(4, pages)) as pool:
-            list(pool.map(lambda page: self.get_page(page, force), range(1, pages + 1)))
+        self._parallel(lambda page: self.get_page(page, force), range(1, pages + 1))
 
     @property
     def _catalog_cache(self):
         with self._lock:
             values = [item for checked, page in self._pages.values()
                       if self.clock() - checked < self.catalog_ttl for item in page["items"]]
-        return list({item["id"]: copy.deepcopy(item) for item in values}.values())
+        indexed = self.catalog_index.products() if self.catalog_index else []
+        return list({item["id"]: copy.deepcopy(item) for item in indexed + values}.values())
 
     def coverage(self):
-        return {"loaded_products": len(self._catalog_cache), "search_pages": self.search_pages,
-                "scope": "representative_sample", "complete_catalog": False}
+        indexed = self.catalog_index.coverage() if self.catalog_index else {"indexed_products": 0, "complete_catalog": False}
+        return {**indexed, "loaded_products": len(self._catalog_cache), "search_pages": self.search_pages,
+                "scope": "imported_catalog" if indexed["indexed_products"] else "representative_sample",
+                "trade_facts_require_live_detail": True}
 
     @staticmethod
     def _key(text):
@@ -148,7 +189,15 @@ class EktClient:
         text = str(text).lower().replace("ё", "е").replace("×", "x")
         text = re.sub(r"(?<=\d)\s*[хx*]\s*(?=\d)", "x", text)
         text = re.sub(r"(?<=\d),(?=\d)", ".", text)
+        text = re.sub(r"(\d+(?:\.\d+)?)\s*(?:amps?|amperes?|ампер\w*)\b", r"\1a", text)
+        text = re.sub(r"(\d+(?:\.\d+)?)\s*(?:volts?|вольт\w*)\b", r"\1v", text)
         for pattern, replacement in ((r"\bавтоматическ\w*\s+выключател\w*", "автомат"),
+                                     (r"\b(?:circuit\s+breakers?|mcbs?)\b", "автомат"),
+                                     (r"\bавтомат(?:ты|тық)?\s+(?:ажыратқыш|сөндіргіш)\w*", "автомат"),
+                                     (r"\b(?:cables?|wires?)\b", "кабель"),
+                                     (r"\b(?:residual\s+current\s+(?:devices?|breakers?)|rccb|rcd)\b", "узо"),
+                                     (r"\brcbo\b", "дифавтомат"),
+                                     (r"\b(?:лампалар|lamps?|bulbs?)\b", "лампа"),
                                      (r"\bавтомат(?:ы|а|ов|ом)?\b", "автомат"),
                                      (r"\bкабел[ьяеи]\w*\b", "кабель"),
                                      (r"\bсветодиодн\w*", "led"),
@@ -162,24 +211,27 @@ class EktClient:
             return []
         # Explicit ID labels are unambiguous even in a natural-language sentence.
         # A labelled article must never be interpreted as a product ID.
-        article_query = bool(re.search(r"\b(?:артикул\w*|sku)\b", query))
+        article_query = bool(re.search(r"\b(?:артикул\w*|sku|article|barcode|штрихкод\w*|ean|gtin)\b", query))
         direct = None if article_query else re.search(r"\b(?:id|идентификатор)(?:\s+товара)?\s*[:=#№]?\s*(\d{1,10})\b", query)
         if direct:
             detail = self.get_product_detail(int(direct[1]))
             return [{**detail, "_match_type": "exact", "_match_score": 100}] if detail else []
-        self.preload_catalog()
+        if not self.catalog_index or not self.catalog_index.coverage()["indexed_products"]:
+            self.preload_catalog()
         bare_number = re.fullmatch(r"\d{1,10}", query)
-        query = re.sub(r"\b\d+\s*(?:шт\.?|штук|pcs|ед\.?)\b", "", query)
+        query = re.sub(r"\b\d+\s*(?:шт\.?|штук|pcs|pieces?|дана|ед\.?)\b", "", query)
         words = re.findall(r"[\w./-]+", query)
         keys = {self._key(word) for word in words}
         exact, scored = [], []
         stop = {"найди", "найдите", "покажи", "покажите", "есть", "мне", "нужен", "нужно", "нужна",
                 "купить", "хочу", "товар", "артикул", "пожалуйста", "наличие", "сертификат", "шт", "для", "это",
-                "по", "подбери", "подберите", "какой", "какая", "какие", "ли", "на", "характеристики", "цена"}
+                "по", "подбери", "подберите", "какой", "какая", "какие", "ли", "на", "характеристики", "цена",
+                "find", "show", "me", "need", "want", "please", "buy", "the", "sku", "article", "barcode", "stock", "available",
+                "керек", "тауар", "табыңыз", "ізде", "бар", "ма", "маған", "баға", "қажет", "дана"}
         tokens = [word for word in words if len(word) > 1 and word not in stop]
         requested_specs = {}
         for field, pattern in (("current", r"(?<![\w.])(\d+(?:\.\d+)?)\s*[аa]\b"),
-                               ("poles", r"(?<![\w.])(\d+)\s*[pрф]\b"),
+                               ("poles", r"(?<![\w.])(\d+)\s*(?:[pрф]|poles?|полюс\w*)\b"),
                                ("voltage", r"(?<![\w.])(\d+)\s*[вv]\b"),
                                ("breaking_capacity", r"(?<![\w.])(\d+(?:\.\d+)?)\s*[кk][аa]\b")):
             found = re.search(pattern, query)
@@ -187,9 +239,10 @@ class EktClient:
                 requested_specs[field] = number(found[1])
         for item in self._catalog_cache:
             props = item.get("properties") or {}
-            identifiers = [item.get("article"), props.get("ARTIKULPOSTAVSHCHIKA")]
-            if not article_query and not bare_number:
-                identifiers.append(item["id"])
+            identifiers = [item.get("article"), props.get("ARTIKULPOSTAVSHCHIKA"), props.get("CML2_BAR_CODE")]
+            identifiers = [entry for value in identifiers for entry in (value if isinstance(value, list) else [value])]
+            # Unlabelled quantities, voltages and budgets must not become IDs.
+            # Explicit ID labels and a bare numeric identifier are handled above/below.
             if any(self._key(value) in keys for value in identifiers if value):
                 exact.append({**item, "_match_type": "exact", "_match_score": 100})
                 continue
@@ -200,6 +253,12 @@ class EktClient:
             if dimensions and not all(re.search(rf"(?<![\d.]){re.escape(dimension)}(?![\d.])", haystack) for dimension in dimensions):
                 continue
             score = sum(1 for word in tokens if word in haystack)
+            requested_family = ("rcbo" if "дифавтомат" in query else "rcd" if "узо" in query else
+                                "breaker" if "автомат" in query else "cable" if "кабель" in query else None)
+            if requested_family:
+                if item.get("technical", {}).get("family") != requested_family:
+                    continue
+                score += 1
             threshold = 1 if len(tokens) <= 2 else 2
             if score >= threshold:
                 scored.append({**item, "_match_type": "text", "_match_score": score,
@@ -247,7 +306,7 @@ class EktClient:
             {"id": store.get("id"), "name": str(store.get("name", "")), "quantity": number(store.get("quantity"))}
             for store in data.get("stores", []) if isinstance(store, dict)
         ] if isinstance(data.get("stores"), list) else []
-        data["specifications"] = [{"name": label, "value": str(props[key])}
+        data["specifications"] = [{"key": key, "name": label, "value": str(props[key])}
                                   for key, label in SPEC_NAMES.items() if props.get(key) not in (None, "", [])]
         cert = safe_url(data.get("certificate_url") or data.get("certificate_link"))
         for key, value in props.items():
@@ -282,10 +341,12 @@ class EktClient:
                              "leakage_current": rating(props.get("NOMINALNYY_OTKLYUCHAYUSHCHIY_DIFFERENTSIALNYY_TOK"), "leakage"),
                              "cores": cores, "section": section,
                              "cable_type": cable_type[1] if cable_type else None}
-        warnings = []
+        warnings, warning_codes = [], []
         if name_current is not None and current is not None and props.get("NOMINALNYY_TOK") and name_current != current:
             warnings.append(f"Ток в названии ({name_current:g} А) расходится со свойством каталога ({current:g} А). Требуется уточнение.")
+            warning_codes.append({"code": "current_conflict", "params": {"name_current": name_current, "property_current": current}})
         data["data_quality_warnings"] = warnings
+        data["warning_codes"] = warning_codes
         return data
 
     @staticmethod
@@ -314,18 +375,18 @@ class EktClient:
                 return []
             if (key == "breaking_capacity" and alternative < original) or (key != "breaking_capacity" and alternative != original):
                 return []
-            matches.append({"name": labels[key], "original": original, "alternative": alternative})
+            matches.append({"key": key, "name": labels[key], "original": original, "alternative": alternative})
         return matches
 
     def find_analogs(self, product, limit=3):
         if product.get("data_quality_warnings"):
             return []
-        self.preload_catalog()
+        if not self.catalog_index or not self.catalog_index.coverage()["indexed_products"]:
+            self.preload_catalog()
         family = product.get("technical", {}).get("family")
         candidates = [item for item in self._catalog_cache
                       if item["id"] != product["id"] and item.get("technical", {}).get("family") == family]
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            details = list(pool.map(lambda item: self.get_product_detail(item["id"], force_refresh=True), candidates[:16]))
+        details = self._parallel(lambda item: self.get_product_detail(item["id"], force_refresh=True), candidates[:16])
         matches = []
         for detail in details:
             if not detail or not detail["stock_verified"] or detail["quantity"] <= 0:
@@ -338,9 +399,9 @@ class EktClient:
         return matches[:limit]
 
     @staticmethod
-    def get_purchase_terms():
+    def get_purchase_terms(language="ru"):
         from knowledge_base import purchase_terms
-        return purchase_terms()
+        return purchase_terms(language)
 
 
 ekt_client = EktClient()

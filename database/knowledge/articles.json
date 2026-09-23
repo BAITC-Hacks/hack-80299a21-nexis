@@ -1,0 +1,1829 @@
+{
+  "schema_version": 1,
+  "corpus_version": "2026-09-23.1",
+  "description": "Curated guidance. Product facts require live API. Kazakh translations need native review. Customer uploads are excluded.",
+  "articles": [
+    {
+      "id": "payment",
+      "category": "payment",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-public-contacts",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "verified_public_page",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "оплат",
+        "төлем",
+        "payment",
+        "pay",
+        "invoice",
+        "счет",
+        "шот"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как оплатить покупку?",
+          "content": "На публичной странице ekt.kz перечислены оплата картой онлайн, наличные при получении и оплата в торговом зале. Для юрлиц предусмотрен счёт. Способ оплаты конкретного заказа подтвердите у менеджера. Платёжные данные не отправляйте в чат."
+        },
+        "kk": {
+          "title": "Сатып алуды қалай төлеуге болады?",
+          "content": "ekt.kz сайтында онлайн карта, алған кезде қолма-қол және сауда залында төлеу көрсетілген. Заңды тұлғалар шотпен төлей алады. Нақты тапсырыстың төлемін менеджермен растаңыз. Карта деректерін чатқа жібермеңіз."
+        },
+        "en": {
+          "title": "How can I pay?",
+          "content": "ekt.kz lists online card payment, cash on receipt and in-store payment. Companies can request an invoice. Confirm the payment method for your order with a manager. Never send card details in chat."
+        }
+      }
+    },
+    {
+      "id": "delivery",
+      "category": "delivery",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-public-contacts",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "verified_public_page",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "достав",
+        "самовывоз",
+        "срок",
+        "жеткіз",
+        "алып",
+        "кет",
+        "delivery",
+        "shipping",
+        "collection"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Доставка и самовывоз",
+          "content": "Согласованная доставка по Алматы указана в пределах 48 часов. Межгород зависит от адреса, веса и объёма. Порог бесплатной доставки на странице указан неоднозначно: стоимость и срок подтвердите у менеджера."
+        },
+        "kk": {
+          "title": "Жеткізу және алып кету",
+          "content": "Алматыда келісілген жеткізу 48 сағат ішінде деп көрсетілген. Басқа қалаға жеткізу мекенжайға, салмаққа және көлемге байланысты. Тегін жеткізу шегі бірмәнді емес: құны мен мерзімін менеджермен растаңыз."
+        },
+        "en": {
+          "title": "Delivery and collection",
+          "content": "Agreed Almaty delivery is listed within 48 hours. Other cities depend on address, weight and volume. Free-delivery thresholds are inconsistent on the page; confirm cost and timing with a manager."
+        }
+      }
+    },
+    {
+      "id": "minimum_order",
+      "category": "quantity",
+      "source_url": "https://ekt.kz/api/products",
+      "source_id": "ekt-product-api",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "product_api_required",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "миним",
+        "партия",
+        "кратност",
+        "ең",
+        "аз",
+        "еселік",
+        "minimum",
+        "order",
+        "multiple",
+        "pack"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Минимальная партия и кратность",
+          "content": "Минимальная партия и кратность проверяются по полям конкретного товара в каталоге. Если полей нет, правило не подтверждено. Укажите артикул и нужное количество."
+        },
+        "kk": {
+          "title": "Ең аз партия және еселік",
+          "content": "Ең аз партия мен қаптама еселігі нақты артикул бойынша тексеріледі. Өрістер болмаса, шарт расталмаған. Артикул мен қажетті санды көрсетіңіз."
+        },
+        "en": {
+          "title": "Minimum order and pack multiple",
+          "content": "Minimum order and pack multiple are checked for the specific catalog item. Missing fields mean the rule is unconfirmed. Provide the SKU and quantity."
+        }
+      }
+    },
+    {
+      "id": "certificates",
+      "category": "certificates",
+      "source_url": "https://ekt.kz/api/products",
+      "source_id": "ekt-product-api",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "product_api_required",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "сертифик",
+        "паспорт",
+        "сәйкест",
+        "certificate",
+        "document",
+        "certification"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Где сертификат товара?",
+          "content": "Укажите артикул. Ссылка на сертификат показывается только при наличии в данных товара. Отсутствие ссылки не доказывает отсутствие сертификата; документ можно запросить у менеджера."
+        },
+        "kk": {
+          "title": "Тауар сертификаты қайда?",
+          "content": "Артикулды көрсетіңіз. Сертификат сілтемесі тауар деректерінде болғанда ғана беріледі. Сілтеменің болмауы сертификат жоқ дегенді білдірмейді; құжатты менеджерден сұраңыз."
+        },
+        "en": {
+          "title": "Where is the product certificate?",
+          "content": "Provide the SKU. A certificate link is shown only when present in product data. A missing link does not prove there is no certificate; request the document from a manager."
+        }
+      }
+    },
+    {
+      "id": "contacts",
+      "category": "contacts",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-public-contacts",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "verified_public_page",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "менедж",
+        "оператор",
+        "человек",
+        "контакт",
+        "байланыс",
+        "manager",
+        "contact",
+        "human",
+        "support"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как связаться с менеджером?",
+          "content": "Выберите город на официальной странице контактов ekt.kz. Ассистент не отправляет обращение в CRM автоматически."
+        },
+        "kk": {
+          "title": "Менеджермен қалай байланысуға болады?",
+          "content": "ekt.kz ресми байланыс бетінде қалаңызды таңдаңыз. Ассистент өтінішті CRM жүйесіне автоматты жібермейді."
+        },
+        "en": {
+          "title": "How do I contact a manager?",
+          "content": "Select your city on the official ekt.kz contacts page. The assistant does not automatically submit CRM requests."
+        }
+      }
+    },
+    {
+      "id": "registration",
+      "category": "account",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-public-contacts",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "verified_public_page",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "регистрац",
+        "кабинет",
+        "тіркел",
+        "account",
+        "register",
+        "registration"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Регистрация покупателя",
+          "content": "Регистрация находится в личном кабинете ekt.kz. На сайте предусмотрен выбор физического или юридического лица. Пароль в чат не отправляйте."
+        },
+        "kk": {
+          "title": "Сатып алушыны тіркеу",
+          "content": "Тіркелу ekt.kz жеке кабинетінде орналасқан. Жеке немесе заңды тұлғаны таңдауға болады. Құпиясөзді чатқа жібермеңіз."
+        },
+        "en": {
+          "title": "Customer registration",
+          "content": "Register through your ekt.kz account. The website offers individual and company registration. Do not send passwords in chat."
+        }
+      }
+    },
+    {
+      "id": "returns",
+      "category": "returns",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "возврат",
+        "вернуть",
+        "обмен",
+        "қайтар",
+        "ауыстыр",
+        "return",
+        "refund",
+        "exchange"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как вернуть или обменять товар?",
+          "content": "Условия конкретного возврата нужно подтвердить у филиала. Подготовьте артикул, дату покупки и причину обращения. Срок возврата и перечень документов в этой базе не подтверждены."
+        },
+        "kk": {
+          "title": "Тауарды қалай қайтаруға немесе ауыстыруға болады?",
+          "content": "Нақты қайтару шарттарын филиалмен растаңыз. Артикулды, сатып алу күнін және себебін дайындаңыз. Қайтару мерзімі мен құжаттар тізімі бұл базада расталмаған."
+        },
+        "en": {
+          "title": "How do I return or exchange an item?",
+          "content": "Confirm the specific return conditions with the branch. Prepare the SKU, purchase date and reason. This knowledge base does not verify a return deadline or required documents."
+        }
+      }
+    },
+    {
+      "id": "warranty",
+      "category": "warranty",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "гарант",
+        "кепілдік",
+        "warranty",
+        "guarantee"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Какая гарантия на товар?",
+          "content": "Гарантия зависит от конкретного изделия и документов поставки. Укажите артикул; если подтверждённых условий нет, их необходимо запросить у менеджера."
+        },
+        "kk": {
+          "title": "Тауардың кепілдігі қандай?",
+          "content": "Кепілдік нақты бұйым мен жеткізу құжаттарына байланысты. Артикулды көрсетіңіз; расталған шарттар болмаса, менеджерден сұрау қажет."
+        },
+        "en": {
+          "title": "What warranty applies?",
+          "content": "Warranty depends on the specific product and supply documents. Provide the SKU; if verified terms are unavailable, request them from a manager."
+        }
+      }
+    },
+    {
+      "id": "invoice",
+      "category": "payment",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "счет",
+        "юрлиц",
+        "шот",
+        "invoice",
+        "company",
+        "billing"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как получить счёт для компании?",
+          "content": "Попросите менеджера выставить счёт на выбранные позиции и количество. Ассистент не формирует официальный счёт и не принимает оплату."
+        },
+        "kk": {
+          "title": "Компанияға шотты қалай алуға болады?",
+          "content": "Таңдалған тауарлар мен санына шот беруді менеджерден сұраңыз. Ассистент ресми шот жасамайды және төлем қабылдамайды."
+        },
+        "en": {
+          "title": "How can a company request an invoice?",
+          "content": "Ask a manager to invoice the selected items and quantities. The assistant neither issues official invoices nor processes payments."
+        }
+      }
+    },
+    {
+      "id": "vat",
+      "category": "payment",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "ндс",
+        "налог",
+        "ққс",
+        "салық",
+        "vat",
+        "tax"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Включён ли НДС?",
+          "content": "Налоговый режим и состав цены конкретного счёта подтвердите у менеджера. Ассистент не делает вывод о налоге только из суммы товара."
+        },
+        "kk": {
+          "title": "ҚҚС қосылған ба?",
+          "content": "Нақты шоттың салығы мен баға құрамын менеджермен растаңыз. Ассистент тек тауар сомасынан салық туралы қорытынды жасамайды."
+        },
+        "en": {
+          "title": "Is VAT included?",
+          "content": "Confirm tax treatment and invoice price composition with a manager. The assistant does not infer tax from the product amount."
+        }
+      }
+    },
+    {
+      "id": "discount",
+      "category": "payment",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "скидк",
+        "оптов",
+        "жеңілдік",
+        "discount",
+        "wholesale",
+        "bulk"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Можно получить скидку?",
+          "content": "Скидку для объёма или проекта согласует менеджер. До подтверждения действует только цена, полученная из каталога; скидка ассистентом не обещается."
+        },
+        "kk": {
+          "title": "Жеңілдік алуға бола ма?",
+          "content": "Көлемге немесе жобаға жеңілдікті менеджер келіседі. Расталғанша каталогтан алынған баға ғана көрсетіледі; ассистент жеңілдік уәде етпейді."
+        },
+        "en": {
+          "title": "Can I get a discount?",
+          "content": "A manager approves volume or project discounts. Until confirmed, only the catalog price is shown; the assistant cannot promise a discount."
+        }
+      }
+    },
+    {
+      "id": "installments",
+      "category": "payment",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "рассроч",
+        "бөліп",
+        "installment",
+        "credit"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Есть ли рассрочка?",
+          "content": "Доступность рассрочки, провайдера и условия конкретной покупки проверьте на ekt.kz или у менеджера. В чате кредит не оформляется."
+        },
+        "kk": {
+          "title": "Бөліп төлеу бар ма?",
+          "content": "Бөліп төлеудің қолжетімділігін, провайдерін және шарттарын ekt.kz сайтынан немесе менеджерден тексеріңіз. Чатта несие рәсімделмейді."
+        },
+        "en": {
+          "title": "Are instalments available?",
+          "content": "Check ekt.kz or a manager for instalment availability, provider and terms for your purchase. Credit is not arranged in chat."
+        }
+      }
+    },
+    {
+      "id": "shipping_cost",
+      "focus_keywords": ["стоим", "сколько", "құн", "қанша", "cost", "fee", "price"],
+      "category": "delivery",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "стоимость",
+        "достав",
+        "құны",
+        "жеткіз",
+        "shipping",
+        "cost",
+        "delivery",
+        "fee"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Сколько стоит доставка?",
+          "content": "Для расчёта нужны город, адрес, состав, вес и объём заказа. Точную стоимость подтвердит менеджер; чат не рассчитывает тариф перевозчика."
+        },
+        "kk": {
+          "title": "Жеткізу қанша тұрады?",
+          "content": "Есептеу үшін қала, мекенжай, тапсырыс құрамы, салмағы және көлемі қажет. Нақты құнын менеджер растайды; чат тасымалдаушы тарифін есептемейді."
+        },
+        "en": {
+          "title": "How much does delivery cost?",
+          "content": "A quote needs the destination, order contents, weight and volume. A manager confirms the cost; chat does not calculate carrier tariffs."
+        }
+      }
+    },
+    {
+      "id": "delivery_date",
+      "focus_keywords": ["сегодня", "сроч", "бүгін", "шұғыл", "today", "urgent", "same-day"],
+      "category": "delivery",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "сегодня",
+        "сроч",
+        "мерзім",
+        "бүгін",
+        "today",
+        "urgent",
+        "delivery",
+        "time"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Можно доставить сегодня?",
+          "content": "Наличие на складе не подтверждает доставку сегодня. Срочную доставку согласуйте с филиалом после проверки конкретных позиций."
+        },
+        "kk": {
+          "title": "Бүгін жеткізуге бола ма?",
+          "content": "Қоймада болуы бүгін жеткізілетінін растамайды. Нақты тауарлар тексерілгеннен кейін шұғыл жеткізуді филиалмен келісіңіз."
+        },
+        "en": {
+          "title": "Can you deliver today?",
+          "content": "Stock availability does not confirm same-day delivery. Arrange urgent delivery with the branch after checking the items."
+        }
+      }
+    },
+    {
+      "id": "pickup_branch",
+      "focus_keywords": ["забрат", "самовывоз", "алып кет", "pickup", "collect"],
+      "category": "delivery",
+      "source_url": "https://ekt.kz/about/contacts/",
+      "source_id": "ekt-manager-confirmation",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "requires_manager_confirmation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "забрать",
+        "самовывоз",
+        "филиал",
+        "алып",
+        "кет",
+        "pickup",
+        "collect",
+        "branch"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Где забрать заказ?",
+          "content": "Укажите город и артикул для проверки складов. Адрес и готовность заказа к выдаче подтвердите у филиала перед поездкой."
+        },
+        "kk": {
+          "title": "Тапсырысты қайдан алуға болады?",
+          "content": "Қоймаларды тексеру үшін қала мен артикулды көрсетіңіз. Бармас бұрын мекенжай мен тапсырыстың дайындығын филиалдан растаңыз."
+        },
+        "en": {
+          "title": "Where can I collect an order?",
+          "content": "Provide the city and SKU to check warehouses. Confirm the collection address and order readiness with the branch before travelling."
+        }
+      }
+    },
+    {
+      "id": "stock_reservation",
+      "category": "stock",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "резерв",
+        "бронь",
+        "резервтеу",
+        "reserve",
+        "reservation"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Товар в корзине зарезервирован?",
+          "content": "Корзина прототипа не резервирует склад и не оформляет заказ у партнёра. Остаток повторно проверяется при подтверждении изменения корзины."
+        },
+        "kk": {
+          "title": "Себеттегі тауар резервке қойылды ма?",
+          "content": "Прототип себеті қойма қорын резервтемейді және серіктесте тапсырыс рәсімдемейді. Себет өзгерісін растағанда қор қайта тексеріледі."
+        },
+        "en": {
+          "title": "Does adding to cart reserve stock?",
+          "content": "The prototype cart neither reserves warehouse stock nor places a partner order. Stock is rechecked when a cart change is confirmed."
+        }
+      }
+    },
+    {
+      "id": "cart_confirmation",
+      "category": "cart",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "корзин",
+        "добав",
+        "себет",
+        "қос",
+        "cart",
+        "add",
+        "confirm"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как добавить товар в корзину?",
+          "content": "Выберите товар и количество, проверьте предложение и явно подтвердите добавление. Обычный вопрос о товаре не является согласием."
+        },
+        "kk": {
+          "title": "Тауарды себетке қалай қосуға болады?",
+          "content": "Тауар мен санын таңдаңыз, ұсынысты тексеріп, қосуды нақты растаңыз. Тауар туралы жай сұрақ келісім болып саналмайды."
+        },
+        "en": {
+          "title": "How do I add an item to cart?",
+          "content": "Select the item and quantity, review the offer and explicitly confirm adding it. A product question alone is not consent."
+        }
+      }
+    },
+    {
+      "id": "cart_real_checkout",
+      "category": "cart",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "демо",
+        "корзин",
+        "оформить",
+        "checkout",
+        "real",
+        "cart",
+        "order"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Это настоящая корзина ekt.kz?",
+          "content": "В прототипе используется отдельная демонстрационная корзина. Её состав не передаётся в заказ ekt.kz; оплату и оформление выполняют через согласованный канал партнёра."
+        },
+        "kk": {
+          "title": "Бұл ekt.kz нақты себеті ме?",
+          "content": "Прототипте бөлек демонстрациялық себет қолданылады. Оның құрамы ekt.kz тапсырысына жіберілмейді; төлем мен рәсімдеу серіктестің келісілген арнасы арқылы жасалады."
+        },
+        "en": {
+          "title": "Is this the real ekt.kz cart?",
+          "content": "The prototype uses a separate demonstration cart. Its contents are not submitted as an ekt.kz order; use the partner's agreed channel for checkout and payment."
+        }
+      }
+    },
+    {
+      "id": "cart_change",
+      "category": "cart",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "измен",
+        "количество",
+        "сан",
+        "өзгер",
+        "change",
+        "quantity",
+        "update"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как изменить количество?",
+          "content": "Укажите новую итоговую величину для выбранной позиции и подтвердите изменение. Сервер проверяет положительное количество, упаковку и доступный остаток."
+        },
+        "kk": {
+          "title": "Санды қалай өзгертуге болады?",
+          "content": "Таңдалған позицияның жаңа жалпы санын көрсетіп, өзгерісті растаңыз. Сервер оң санды, қаптаманы және қолжетімді қорды тексереді."
+        },
+        "en": {
+          "title": "How can I change quantity?",
+          "content": "Specify the new total quantity for the item and confirm the change. The server checks positive quantity, packaging and available stock."
+        }
+      }
+    },
+    {
+      "id": "cart_remove",
+      "category": "cart",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "удал",
+        "убрать",
+        "жою",
+        "алып",
+        "таста",
+        "remove",
+        "delete"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как удалить позицию?",
+          "content": "Выберите удаление нужной позиции в корзине и подтвердите действие. Перед подтверждением проверьте артикул."
+        },
+        "kk": {
+          "title": "Позицияны қалай жоюға болады?",
+          "content": "Себетте қажетті позицияны жоюды таңдап, әрекетті растаңыз. Растамас бұрын артикулды тексеріңіз."
+        },
+        "en": {
+          "title": "How do I remove an item?",
+          "content": "Choose removal for the required cart item and confirm it. Check the SKU before confirming."
+        }
+      }
+    },
+    {
+      "id": "offer_expired",
+      "category": "cart",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "истек",
+        "устарел",
+        "мерзім",
+        "expired",
+        "offer",
+        "confirmation"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Почему подтверждение устарело?",
+          "content": "Предложение имеет ограниченный срок. Получите новое предложение, чтобы повторно проверить цену, остаток и количество, затем подтвердите его."
+        },
+        "kk": {
+          "title": "Растау неге ескірді?",
+          "content": "Ұсыныстың мерзімі шектеулі. Баға, қор және санды қайта тексеру үшін жаңа ұсыныс алып, оны растаңыз."
+        },
+        "en": {
+          "title": "Why has confirmation expired?",
+          "content": "Offers expire. Request a new offer to recheck price, stock and quantity, then confirm it."
+        }
+      }
+    },
+    {
+      "id": "stock_unknown",
+      "category": "stock",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "неизвест",
+        "остаток",
+        "қолжетімсіз",
+        "stock",
+        "unknown",
+        "unavailable"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Остаток неизвестен",
+          "content": "При недоступном API или отсутствии значения ассистент не считает товар доступным. Повторите проверку позже или уточните наличие у филиала."
+        },
+        "kk": {
+          "title": "Қор белгісіз",
+          "content": "API қолжетімсіз немесе мәні жоқ болса, ассистент тауарды бар деп санамайды. Кейін тексеріңіз немесе филиалдан нақтылаңыз."
+        },
+        "en": {
+          "title": "Stock is unknown",
+          "content": "When the API is unavailable or a value is missing, the assistant does not assume stock. Retry later or ask the branch."
+        }
+      }
+    },
+    {
+      "id": "price_changed",
+      "category": "price",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "измен",
+        "цен",
+        "баға",
+        "өзгер",
+        "price",
+        "changed"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Почему изменилась цена?",
+          "content": "Цена повторно проверяется по API перед изменением корзины. Если данные изменились, проверьте новое предложение перед подтверждением."
+        },
+        "kk": {
+          "title": "Баға неге өзгерді?",
+          "content": "Себет өзгерер алдында баға API арқылы қайта тексеріледі. Деректер өзгерсе, растамас бұрын жаңа ұсынысты тексеріңіз."
+        },
+        "en": {
+          "title": "Why did the price change?",
+          "content": "Price is rechecked through the API before a cart change. If data changed, review the new offer before confirming."
+        }
+      }
+    },
+    {
+      "id": "warehouse_stock",
+      "category": "stock",
+      "source_url": "https://ekt.kz/api/products",
+      "source_id": "ekt-product-api",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "product_api_required",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "склад",
+        "город",
+        "наличие",
+        "қойма",
+        "қала",
+        "бар",
+        "stock",
+        "city",
+        "warehouse"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Остаток по городу",
+          "content": "Укажите город и артикул. Общий остаток и остаток конкретного склада могут различаться; доступность в другом городе не означает наличие в выбранном филиале."
+        },
+        "kk": {
+          "title": "Қала бойынша қор",
+          "content": "Қала мен артикулды көрсетіңіз. Жалпы қор мен нақты қойма қоры әртүрлі болуы мүмкін; басқа қаладағы қор таңдалған филиалда бар дегенді білдірмейді."
+        },
+        "en": {
+          "title": "Stock by city",
+          "content": "Provide the city and SKU. Total stock can differ from a warehouse's stock; availability elsewhere does not mean the selected branch has it."
+        }
+      }
+    },
+    {
+      "id": "out_of_stock",
+      "category": "stock",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "нет",
+        "наличии",
+        "аналог",
+        "жоқ",
+        "балама",
+        "out",
+        "stock",
+        "alternative"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что делать, если товара нет?",
+          "content": "Можно искать аналог с совпадающими критическими характеристиками и подтверждённым остатком. Если таких позиций нет, ассистент сообщает об этом."
+        },
+        "kk": {
+          "title": "Тауар жоқ болса не істеу керек?",
+          "content": "Маңызды сипаттамалары сәйкес және қоры расталған баламаны іздеуге болады. Ондай позициялар болмаса, ассистент хабарлайды."
+        },
+        "en": {
+          "title": "What if an item is out of stock?",
+          "content": "Search for an alternative with matching critical specifications and confirmed stock. If none are found, the assistant reports that."
+        }
+      }
+    },
+    {
+      "id": "analogs_limit",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "бренд",
+        "заменить",
+        "совместим",
+        "алмастыр",
+        "brand",
+        "replace",
+        "compatible"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Можно заменить другим брендом?",
+          "content": "Бренд сам по себе не подтверждает совместимость. Сравните электрические параметры, габариты и условия применения двух конкретных моделей."
+        },
+        "kk": {
+          "title": "Басқа брендпен ауыстыруға бола ма?",
+          "content": "Брендтің өзі үйлесімділікті растамайды. Екі нақты модельдің электрлік параметрлерін, өлшемдерін және қолдану шарттарын салыстырыңыз."
+        },
+        "en": {
+          "title": "Can I substitute another brand?",
+          "content": "Brand alone does not establish compatibility. Compare electrical ratings, dimensions and application requirements for the two specific models."
+        }
+      }
+    },
+    {
+      "id": "search_sku",
+      "category": "catalog",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "артикул",
+        "код",
+        "іздеу",
+        "sku",
+        "article",
+        "exact",
+        "search"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как найти точный артикул?",
+          "content": "Напишите «артикул» и полное обозначение с упаковки или документа. Не сокращайте суффиксы: похожие коды могут обозначать разные исполнения."
+        },
+        "kk": {
+          "title": "Нақты артикулды қалай табуға болады?",
+          "content": "«Артикул» деп жазып, қаптамадағы немесе құжаттағы толық кодты беріңіз. Соңғы таңбаларын қысқартпаңыз: ұқсас кодтар басқа нұсқалар болуы мүмкін."
+        },
+        "en": {
+          "title": "How do I find an exact SKU?",
+          "content": "Write SKU followed by the full package or document code. Keep suffixes: similar codes can identify different variants."
+        }
+      }
+    },
+    {
+      "id": "search_barcode",
+      "category": "catalog",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "штрихкод",
+        "штрихкод",
+        "barcode",
+        "ean",
+        "gtin"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Поиск по штрихкоду",
+          "content": "Передайте штрихкод как текст и укажите, что это штрихкод. Совпадение возможно, если код присутствует в загруженном индексе каталога."
+        },
+        "kk": {
+          "title": "Штрихкодпен іздеу",
+          "content": "Штрихкодты мәтінмен беріп, оның штрихкод екенін көрсетіңіз. Код жүктелген каталог индексінде болса, сәйкестік табылады."
+        },
+        "en": {
+          "title": "Barcode lookup",
+          "content": "Send the barcode as text and label it as a barcode. It can be matched when present in the imported catalog index."
+        }
+      }
+    },
+    {
+      "id": "catalog_coverage",
+      "category": "catalog",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "не",
+        "найден",
+        "индекс",
+        "табылма",
+        "индекс",
+        "not",
+        "found",
+        "coverage",
+        "catalog"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Почему товар не найден?",
+          "content": "Проверьте полное обозначение. Индекс может охватывать только часть каталога; отсутствие результата не доказывает отсутствие товара у партнёра."
+        },
+        "kk": {
+          "title": "Тауар неге табылмады?",
+          "content": "Толық кодын тексеріңіз. Индекс каталогтың бір бөлігін ғана қамтуы мүмкін; нәтиженің болмауы серіктесте тауар жоқ дегенді дәлелдемейді."
+        },
+        "en": {
+          "title": "Why was a product not found?",
+          "content": "Check the full identifier. The index may cover only part of the catalog; no search result does not prove the partner does not carry the product."
+        }
+      }
+    },
+    {
+      "id": "spec_conflict",
+      "category": "catalog",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "противореч",
+        "расход",
+        "ток",
+        "қайшы",
+        "conflict",
+        "inconsistent",
+        "specs"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Характеристики противоречат друг другу",
+          "content": "Если название и свойства расходятся, нельзя автоматически считать один вариант верным. Нужна проверка паспорта точного артикула или уточнение у менеджера."
+        },
+        "kk": {
+          "title": "Сипаттамалар бір-біріне қайшы",
+          "content": "Атауы мен қасиеттері қайшы болса, біреуін автоматты түрде дұрыс деуге болмайды. Нақты артикулдың паспорты немесе менеджердің түсіндірмесі қажет."
+        },
+        "en": {
+          "title": "Specifications conflict",
+          "content": "When the name and properties disagree, neither is automatically authoritative. Check the exact item's datasheet or ask a manager."
+        }
+      }
+    },
+    {
+      "id": "file_formats",
+      "category": "files",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "файл",
+        "pdf",
+        "excel",
+        "word",
+        "жүкте",
+        "upload",
+        "file",
+        "formats"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Какие файлы можно загрузить?",
+          "content": "Поддерживаются PDF, TXT, DOCX, XLSX, XLS и изображения JPEG, PNG, WEBP. Старый формат DOC не поддерживается. Результат распознавания необходимо проверить."
+        },
+        "kk": {
+          "title": "Қандай файлдарды жүктеуге болады?",
+          "content": "PDF, TXT, DOCX, XLSX, XLS және JPEG, PNG, WEBP суреттері қолданылады. Ескі DOC форматы қолданылмайды. Танылған нәтижені тексеру қажет."
+        },
+        "en": {
+          "title": "Which files can I upload?",
+          "content": "PDF, TXT, DOCX, XLSX, XLS and JPEG, PNG, WEBP images are supported. Legacy DOC is unsupported. Review the extracted result."
+        }
+      }
+    },
+    {
+      "id": "file_quantity",
+      "category": "files",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "спецификац",
+        "таблиц",
+        "количество",
+        "кесте",
+        "сан",
+        "specification",
+        "spreadsheet",
+        "quantity"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как оформить спецификацию?",
+          "content": "Укажите отдельными колонками артикул или наименование и количество. Заголовок и единицы измерения помогут проверить строки. Загрузка не добавляет товары без подтверждения."
+        },
+        "kk": {
+          "title": "Спецификацияны қалай дайындауға болады?",
+          "content": "Артикулды немесе атауды және санын бөлек бағандарға жазыңыз. Тақырып пен өлшем бірлігі жолдарды тексеруге көмектеседі. Жүктеу тауарды растаусыз қоспайды."
+        },
+        "en": {
+          "title": "How should I format a specification?",
+          "content": "Use separate columns for SKU or name and quantity. Headers and units help review rows. Uploading does not add items without confirmation."
+        }
+      }
+    },
+    {
+      "id": "ocr_quality",
+      "category": "files",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "фото",
+        "ocr",
+        "распозна",
+        "сурет",
+        "тану",
+        "photo",
+        "scan",
+        "recognition"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Фото плохо распознаётся",
+          "content": "Снимите маркировку крупно, без бликов и наклона. Если код не читается, напишите его текстом. Распознанная цифра не подтверждает характеристику товара."
+        },
+        "kk": {
+          "title": "Фото нашар танылады",
+          "content": "Таңбаны жақыннан, шағылысусыз және қисайтпай түсіріңіз. Код оқылмаса, мәтінмен жазыңыз. Танылған сан тауар сипаттамасын растамайды."
+        },
+        "en": {
+          "title": "Photo recognition is poor",
+          "content": "Photograph the label close up, without glare or tilt. If unreadable, type the code. A recognized digit does not verify a product rating."
+        }
+      }
+    },
+    {
+      "id": "file_privacy",
+      "category": "privacy",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "файл",
+        "конфиденц",
+        "приват",
+        "дерек",
+        "құпия",
+        "privacy",
+        "file",
+        "knowledge"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Попадёт ли мой файл в базу знаний?",
+          "content": "Пользовательские загрузки не включаются в общую RAG-базу. Не отправляйте платёжные данные или лишние персональные сведения в спецификации."
+        },
+        "kk": {
+          "title": "Менің файлым білім базасына түсе ме?",
+          "content": "Пайдаланушы жүктеген файлдар жалпы RAG базасына қосылмайды. Спецификацияда төлем деректерін немесе артық жеке мәліметтерді жібермеңіз."
+        },
+        "en": {
+          "title": "Will my file enter the knowledge base?",
+          "content": "Customer uploads are not added to the shared RAG corpus. Exclude payment details and unnecessary personal information from specifications."
+        }
+      }
+    },
+    {
+      "id": "languages",
+      "category": "assistant",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "язык",
+        "қазақ",
+        "русский",
+        "english",
+        "language",
+        "тіл"
+      ],
+      "translations": {
+        "ru": {
+          "title": "На каких языках отвечает ассистент?",
+          "content": "Выберите русский, казахский или английский язык. Артикулы, бренды и числовые значения сохраняются в исходном виде."
+        },
+        "kk": {
+          "title": "Ассистент қай тілдерде жауап береді?",
+          "content": "Орыс, қазақ немесе ағылшын тілін таңдаңыз. Артикулдар, брендтер және сандық мәндер бастапқы қалпында сақталады."
+        },
+        "en": {
+          "title": "Which languages does the assistant support?",
+          "content": "Choose Russian, Kazakh or English. SKUs, brands and numeric values retain their original form."
+        }
+      }
+    },
+    {
+      "id": "knowledge_limits",
+      "category": "assistant",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/README.md",
+      "source_id": "nexis-prototype",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "implementation_documentation",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "источник",
+        "достовер",
+        "верить",
+        "дерек",
+        "сенім",
+        "source",
+        "accuracy",
+        "trust"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Можно ли доверять каждому ответу?",
+          "content": "Проверяйте источники и дату данных. При отсутствии подтверждения ассистент должен указать неопределённость. Подбор для монтажа требует проверки условий конкретной установки."
+        },
+        "kk": {
+          "title": "Әр жауапқа сенуге бола ма?",
+          "content": "Дереккөздер мен деректер күнін тексеріңіз. Растау болмаса, ассистент белгісіздікті көрсетуі тиіс. Монтажға таңдау нақты орнату шарттарын тексеруді қажет етеді."
+        },
+        "en": {
+          "title": "Is every answer guaranteed correct?",
+          "content": "Check sources and data dates. Missing evidence must be stated. Installation selection requires checking the specific installation conditions."
+        }
+      }
+    },
+    {
+      "id": "mcb_rcd",
+      "subjects": ["mcb", "rcd"],
+      "answer_kind": "comparison",
+      "category": "technical",
+      "source_url": "https://www.se.com/ca/en/faqs/FA89258/",
+      "source_id": "schneider-fa89258",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "автомат",
+        "узо",
+        "отличие",
+        "айырмаш",
+        "mcb",
+        "rcd",
+        "rccb",
+        "difference",
+        "residual"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Чем автомат отличается от УЗО?",
+          "content": "Автомат защищает от перегрузки и короткого замыкания. УЗО (RCCB) реагирует на дифференциальный ток, но не заменяет защиту от сверхтока."
+        },
+        "kk": {
+          "title": "Автомат пен ҚАҚ айырмашылығы қандай?",
+          "content": "Автомат артық жүктемеден және қысқа тұйықталудан қорғайды. ҚАҚ (RCCB) дифференциалдық токқа әрекет етеді, бірақ артық ток қорғанысын алмастырмайды."
+        },
+        "en": {
+          "title": "What is the difference between an MCB and an RCD?",
+          "content": "An MCB protects against overload and short circuit. An RCCB responds to residual current but does not replace overcurrent protection."
+        }
+      }
+    },
+    {
+      "id": "rcbo",
+      "subjects": ["rcbo"],
+      "answer_kind": "definition",
+      "category": "technical",
+      "source_url": "https://www.se.com/sa/en/faqs/FA278748/",
+      "source_id": "schneider-fa278748",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "дифавтомат",
+        "rcbo",
+        "дифференц",
+        "combined",
+        "protection"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что такое дифавтомат?",
+          "content": "Дифавтомат (RCBO) сочетает дифференциальную защиту и защиту от сверхтока. Конкретные номиналы проверяют по маркировке и паспорту модели."
+        },
+        "kk": {
+          "title": "Дифавтомат деген не?",
+          "content": "Дифавтомат (RCBO) дифференциалдық және артық ток қорғанысын біріктіреді. Нақты номиналдар модельдің таңбасы мен паспорты бойынша тексеріледі."
+        },
+        "en": {
+          "title": "What is an RCBO?",
+          "content": "An RCBO combines residual-current and overcurrent protection. Check the model's markings and datasheet for its ratings."
+        }
+      }
+    },
+    {
+      "id": "rcd_overload",
+      "subjects": ["rcd"],
+      "answer_kind": "application",
+      "category": "technical",
+      "source_url": "https://www.se.com/ca/en/faqs/FA89258/",
+      "source_id": "schneider-fa89258",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "узо",
+        "перегруз",
+        "қаq",
+        "жүктеме",
+        "rccb",
+        "overload",
+        "protection"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Защищает ли УЗО от перегрузки?",
+          "content": "У обычного RCCB нет встроенной тепломагнитной защиты от сверхтока. Схема должна предусматривать согласованную защиту от сверхтока."
+        },
+        "kk": {
+          "title": "ҚАҚ артық жүктемеден қорғай ма?",
+          "content": "Кәдімгі RCCB ішінде артық токтан термомагниттік қорғаныс жоқ. Сұлбада үйлестірілген артық ток қорғанысы болуы керек."
+        },
+        "en": {
+          "title": "Does an RCCB protect against overload?",
+          "content": "A standard RCCB has no built-in thermal-magnetic overcurrent protection. The circuit needs coordinated overcurrent protection."
+        }
+      }
+    },
+    {
+      "id": "breaker_selection",
+      "category": "selection",
+      "source_url": "https://www.abb.com/global/en/areas/electrification/low-voltage/din-rail-devices/miniature-circuit-breakers",
+      "source_id": "abb-mcb",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "подбор",
+        "автомат",
+        "номинал",
+        "ток",
+        "полюс",
+        "таңдау",
+        "breaker",
+        "selection",
+        "rating",
+        "poles"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Какие данные нужны для подбора автомата?",
+          "content": "Укажите номинальный ток, число полюсов, напряжение и отключающую способность. Также важны характеристика срабатывания и условия применения."
+        },
+        "kk": {
+          "title": "Автомат таңдау үшін қандай деректер керек?",
+          "content": "Номиналдық токты, полюс санын, кернеуді және ажырату қабілетін көрсетіңіз. Іске қосылу сипаттамасы мен қолдану шарттары да маңызды."
+        },
+        "en": {
+          "title": "What details are needed to select a breaker?",
+          "content": "Provide rated current, pole count, voltage and breaking capacity. Tripping characteristic and application conditions also matter."
+        }
+      }
+    },
+    {
+      "id": "breaker_curve",
+      "category": "technical",
+      "source_url": "https://www.abb.com/global/en/areas/electrification/low-voltage/din-rail-devices/miniature-circuit-breakers",
+      "source_id": "abb-mcb",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "характерист",
+        "b",
+        "c",
+        "d",
+        "curve",
+        "tripping",
+        "сипаттама"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что означают B, C, D на автомате?",
+          "content": "Это обозначения характеристик срабатывания. Для замены сравнивайте характеристику и документацию конкретной серии; одинакового номинального тока недостаточно."
+        },
+        "kk": {
+          "title": "Автоматтағы B, C, D нені білдіреді?",
+          "content": "Бұл іске қосылу сипаттамаларының белгілері. Ауыстыруда сипаттама мен нақты серия құжаттарын салыстырыңыз; бірдей номиналдық ток жеткіліксіз."
+        },
+        "en": {
+          "title": "What do B, C and D mean on a breaker?",
+          "content": "These identify tripping characteristics. Compare the characteristic and specific series documentation when replacing a breaker; matching current alone is insufficient."
+        }
+      }
+    },
+    {
+      "id": "breaker_poles",
+      "category": "selection",
+      "source_url": "https://www.abb.com/global/en/areas/electrification/low-voltage/din-rail-devices/miniature-circuit-breakers",
+      "source_id": "abb-mcb",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "полюс",
+        "фаз",
+        "poles",
+        "phase",
+        "selection"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как выбрать число полюсов?",
+          "content": "Число полюсов выбирают по схеме сети и требованиям коммутации. Укажите схему и точный артикул; нельзя выбирать только по внешнему размеру."
+        },
+        "kk": {
+          "title": "Полюс санын қалай таңдау керек?",
+          "content": "Полюс саны желі сұлбасы мен коммутация талабына сай таңдалады. Сұлба мен нақты артикулды көрсетіңіз; тек сыртқы өлшемге сүйенуге болмайды."
+        },
+        "en": {
+          "title": "How should I choose the pole count?",
+          "content": "Pole count depends on the circuit and switching requirements. Provide the circuit details and SKU; physical size alone is insufficient."
+        }
+      }
+    },
+    {
+      "id": "selectivity",
+      "category": "technical",
+      "source_url": "https://new.abb.com/low-voltage/solutions/selectivity",
+      "source_id": "abb-selectivity",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "селектив",
+        "selectivity",
+        "coordination",
+        "үйлесім"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что такое селективность?",
+          "content": "При селективности повреждённую цепь отключает ближайшая к ней защита, а вышестоящая остаётся включённой в подтверждённых пределах. Проверяют таблицы производителя для пары аппаратов."
+        },
+        "kk": {
+          "title": "Селективтілік деген не?",
+          "content": "Селективтілікте ақаулы тізбекті оған жақын қорғаныс ажыратады, ал жоғарыдағысы расталған шектерде қосулы қалады. Екі аппарат үшін өндіруші кестелері тексеріледі."
+        },
+        "en": {
+          "title": "What is selectivity?",
+          "content": "With selectivity, the downstream protection clears the fault while upstream protection stays closed within verified limits. Check manufacturer tables for the device pair."
+        }
+      }
+    },
+    {
+      "id": "breaking_capacity",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "отключающ",
+        "ка",
+        "ka",
+        "capacity",
+        "breaking",
+        "ажырату"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что проверить при сравнении кА?",
+          "content": "Сравнивайте отключающую способность при одинаковом напряжении и по указанному стандарту. Одно число кА без этих условий недостаточно для подтверждения замены."
+        },
+        "kk": {
+          "title": "кА салыстырғанда нені тексеру керек?",
+          "content": "Ажырату қабілетін бірдей кернеуде және көрсетілген стандарт бойынша салыстырыңыз. Бұл шарттарсыз жалғыз кА саны ауыстыруды растауға жеткіліксіз."
+        },
+        "en": {
+          "title": "What should I check when comparing kA ratings?",
+          "content": "Compare breaking capacity at the same voltage and stated standard. A kA number alone is insufficient to confirm a substitute."
+        }
+      }
+    },
+    {
+      "id": "cable_selection",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "кабель",
+        "сечение",
+        "жил",
+        "қима",
+        "кабель",
+        "cable",
+        "core",
+        "section",
+        "size"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что нужно знать для выбора кабеля?",
+          "content": "Укажите марку, материал жил, число жил, сечение и условия прокладки. Для расчёта по нагрузке также нужны длина линии и способ установки."
+        },
+        "kk": {
+          "title": "Кабель таңдау үшін не білу керек?",
+          "content": "Марканы, өткізгіш материалын, тамыр санын, қиманы және төсеу шарттарын көрсетіңіз. Жүктеме есебі үшін желі ұзындығы мен орнату тәсілі де қажет."
+        },
+        "en": {
+          "title": "What information is needed to select cable?",
+          "content": "Provide cable type, conductor material, core count, cross-section and installation conditions. Load-based sizing also needs run length and installation method."
+        }
+      }
+    },
+    {
+      "id": "cable_power",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "кабель",
+        "мощность",
+        "қуат",
+        "cable",
+        "power",
+        "size",
+        "calculate"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Можно выбрать кабель только по мощности?",
+          "content": "Одной мощности недостаточно. Для проверки нужны напряжение, схема сети, длина, материал, прокладка и допустимое падение напряжения. Готовое решение без этих данных не подтверждается."
+        },
+        "kk": {
+          "title": "Кабельді тек қуат бойынша таңдауға бола ма?",
+          "content": "Тек қуат жеткіліксіз. Кернеу, желі сұлбасы, ұзындығы, материалы, төсеу тәсілі және рұқсат етілген кернеу түсуі қажет. Бұл деректерсіз шешім расталмайды."
+        },
+        "en": {
+          "title": "Can cable be selected using power alone?",
+          "content": "Power alone is insufficient. Voltage, circuit arrangement, length, material, installation method and permitted voltage drop are needed. A design cannot be confirmed without them."
+        }
+      }
+    },
+    {
+      "id": "ac_dc",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "ac",
+        "dc",
+        "постоян",
+        "перемен",
+        "тұрақты",
+        "айнымалы",
+        "voltage"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Можно использовать аппарат AC в DC?",
+          "content": "Нужна явная допустимость DC в документации точной модели и указанная схема подключения. По одному номинальному напряжению совместимость не подтверждается."
+        },
+        "kk": {
+          "title": "AC аппаратын DC желісінде қолдануға бола ма?",
+          "content": "Нақты модель құжатында DC рұқсаты және қосу сұлбасы болуы керек. Бір номиналдық кернеу бойынша үйлесімділік расталмайды."
+        },
+        "en": {
+          "title": "Can an AC device be used on DC?",
+          "content": "The exact model documentation must explicitly allow DC and specify its connection arrangement. Voltage rating alone does not establish compatibility."
+        }
+      }
+    },
+    {
+      "id": "mount_dimensions",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "щит",
+        "габарит",
+        "монтаж",
+        "қалқан",
+        "өлшем",
+        "panel",
+        "mounting",
+        "dimension",
+        "busbar"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Подойдёт ли аппарат в существующий щит?",
+          "content": "Проверьте габариты, крепление, клеммы и совместимость шин по паспортам обоих изделий. Совпадение электрических номиналов не гарантирует механическую совместимость."
+        },
+        "kk": {
+          "title": "Аппарат қолданыстағы қалқанға сыя ма?",
+          "content": "Екі бұйымның паспортынан өлшем, бекіту, қысқыштар және шиналардың үйлесімділігін тексеріңіз. Бірдей электрлік номиналдар механикалық үйлесімділікті кепілдемейді."
+        },
+        "en": {
+          "title": "Will a device fit my existing panel?",
+          "content": "Check dimensions, mounting, terminals and busbar compatibility in both datasheets. Matching electrical ratings do not guarantee mechanical compatibility."
+        }
+      }
+    },
+    {
+      "id": "lighting_selection",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "лампа",
+        "свет",
+        "яркость",
+        "шам",
+        "жарық",
+        "lamp",
+        "light",
+        "lumens",
+        "dimmer"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Какие параметры нужны для лампы?",
+          "content": "Укажите цоколь, напряжение, световой поток, цветовую температуру и габариты. Для регулировки яркости нужна подтверждённая совместимость лампы и диммера."
+        },
+        "kk": {
+          "title": "Шам үшін қандай параметрлер керек?",
+          "content": "Цоколь, кернеу, жарық ағыны, түс температурасы және өлшемдерін көрсетіңіз. Жарықты реттеу үшін шам мен диммер үйлесімділігі расталуы керек."
+        },
+        "en": {
+          "title": "What specifications are needed for a lamp?",
+          "content": "Provide base, voltage, luminous flux, colour temperature and dimensions. Dimming requires confirmed compatibility between lamp and dimmer."
+        }
+      }
+    },
+    {
+      "id": "outdoor_selection",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "улиц",
+        "ip",
+        "вода",
+        "пыль",
+        "сырт",
+        "су",
+        "outdoor",
+        "weather",
+        "dust",
+        "protection"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Как выбрать оборудование для улицы?",
+          "content": "Укажите воздействие воды, пыли, температуру и способ установки. Проверьте соответствующее исполнение и ограничения в паспорте точной модели."
+        },
+        "kk": {
+          "title": "Сыртқа арналған жабдықты қалай таңдау керек?",
+          "content": "Су, шаң әсерін, температураны және орнату тәсілін көрсетіңіз. Нақты модель паспортындағы орындалуы мен шектеулерін тексеріңіз."
+        },
+        "en": {
+          "title": "How do I select outdoor equipment?",
+          "content": "Specify water and dust exposure, temperature and installation method. Check the exact model's suitable variant and datasheet limits."
+        }
+      }
+    },
+    {
+      "id": "manufacturer_documents",
+      "category": "technical",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "паспорт",
+        "документац",
+        "өндіруші",
+        "datasheet",
+        "manufacturer",
+        "documentation"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Какой паспорт нужен для проверки?",
+          "content": "Используйте документ производителя для точного артикула и исполнения. Документ похожей серии может не подтверждать параметры выбранного изделия."
+        },
+        "kk": {
+          "title": "Тексеру үшін қай паспорт қажет?",
+          "content": "Нақты артикул мен нұсқаға арналған өндіруші құжатын қолданыңыз. Ұқсас серия құжаты таңдалған бұйым параметрлерін растамауы мүмкін."
+        },
+        "en": {
+          "title": "Which datasheet should I use?",
+          "content": "Use the manufacturer document for the exact SKU and variant. Documentation for a similar series may not verify the selected product."
+        }
+      }
+    },
+    {
+      "id": "installation_help",
+      "category": "selection",
+      "source_url": "https://github.com/BAITC-Hacks/hack-80299a21-nexis/blob/main/docs/agent-rag-roadmap.md",
+      "source_id": "nexis-selection-checklist",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": null,
+      "verification_status": "editorial_guidance_requires_engineering_review",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "проект",
+        "щит",
+        "монтаж",
+        "жоба",
+        "қалқан",
+        "installation",
+        "design",
+        "engineer"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Может ли чат подготовить проект щита?",
+          "content": "Ассистент помогает собрать требования и сравнить товары. Проект, расчёты защиты и монтаж должны быть проверены специалистом по исходным данным объекта."
+        },
+        "kk": {
+          "title": "Чат қалқан жобасын дайындай ала ма?",
+          "content": "Ассистент талаптарды жинауға және тауарларды салыстыруға көмектеседі. Жоба, қорғаныс есебі және монтаж нысан деректері бойынша маманмен тексерілуі тиіс."
+        },
+        "en": {
+          "title": "Can chat design my distribution panel?",
+          "content": "The assistant helps collect requirements and compare products. The design, protection calculations and installation need specialist review using the site's actual data."
+        }
+      }
+    },
+    {
+      "id": "rcd_definition",
+      "category": "technical",
+      "subjects": [
+        "rcd"
+      ],
+      "answer_kind": "definition",
+      "source_url": "https://www.se.com/ca/en/faqs/FA89258/",
+      "source_id": "schneider-fa89258",
+      "version": "2026-09-23.1",
+      "updated_at": "2026-09-23",
+      "verified_at": "2026-09-23",
+      "verification_status": "manufacturer_page_reviewed",
+      "translation_review": "kk_requires_native_review",
+      "keywords": [
+        "узо",
+        "қақ",
+        "rcd",
+        "rccb",
+        "дифференциальный",
+        "residual"
+      ],
+      "translations": {
+        "ru": {
+          "title": "Что такое УЗО (RCCB)?",
+          "content": "УЗО (RCCB) — устройство защитного отключения по дифференциальному току. У него нет встроенной тепломагнитной защиты от сверхтока."
+        },
+        "kk": {
+          "title": "ҚАҚ (RCCB) деген не?",
+          "content": "ҚАҚ (RCCB) — дифференциалдық ток бойынша қорғаныстық ажырату құрылғысы. Оның ішінде артық токтан термомагниттік қорғаныс жоқ."
+        },
+        "en": {
+          "title": "What is an RCD (RCCB)?",
+          "content": "An RCCB is a residual-current protective device. It has no built-in thermal-magnetic overcurrent protection."
+        }
+      }
+    }
+  ]
+}

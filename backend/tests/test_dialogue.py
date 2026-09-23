@@ -46,12 +46,12 @@ class DialogueTests(APIHarness):
             response = self.chat(request).json()
             self.assertIsNone(response["pending_offer"], request)
             self.assertFalse(response["cart_updated"])
-            self.assertIn("invalid_quantity", response["warnings"])
+            self.assertIn("invalid_quantity", response["warning_codes"])
         self.chat("TEST-1001")
         for request in ("нужно -3", "1.5 шт", "нужно 1,5"):
             response = self.chat(request).json()
             self.assertIsNone(response["pending_offer"], request)
-            self.assertIn("invalid_quantity", response["warnings"])
+            self.assertIn("invalid_quantity", response["warning_codes"])
         self.assertEqual(self.cart()["total_items"], 0)
 
     def test_city_followup_keeps_selection_and_never_uses_other_warehouse(self):
@@ -91,7 +91,7 @@ class DialogueTests(APIHarness):
         self.chat("TEST-1001")
         response = self.chat("А подешевле?").json()
         self.assertIn("не найден", response["answer"])
-        self.assertIn("cheaper_match_unavailable", response["warnings"])
+        self.assertIn("cheaper_match_unavailable", response["warning_codes"])
         self.assertIsNone(response["pending_offer"])
 
     def test_cheaper_rejects_zero_or_unknown_prices_and_enforces_budget(self):
@@ -100,7 +100,7 @@ class DialogueTests(APIHarness):
         self.transport.products[1012] = product(1012, price=700)
         self.chat("TEST-1001")
         response = self.chat("до 500 тенге").json()
-        self.assertIn("cheaper_match_unavailable", response["warnings"])
+        self.assertIn("cheaper_match_unavailable", response["warning_codes"])
         self.assertIsNone(response["pending_offer"])
 
     def test_cheaper_followup_creates_new_offer_with_preserved_quantity(self):

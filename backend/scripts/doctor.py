@@ -13,6 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from settings import ROOT  # Loads the root .env without printing its contents.
 from spec_parser import SpecificationParser
+from knowledge_base import retrieval_status
+from ekt_client import ekt_client
 
 
 def inspect_ocr():
@@ -55,8 +57,11 @@ def main():
     result = {
         "python": sys.version.split()[0],
         "catalog_credentials_configured": bool(os.getenv("EKT_API_USER") and os.getenv("EKT_API_PASS")),
-        "model_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "model_key_configured": bool(os.getenv("OPENAI_API_KEY")) and not os.getenv("OPENAI_API_KEY", "").startswith("your_"),
         "ocr": inspect_ocr(),
+        "languages": ["ru", "kk", "en"],
+        "retrieval": retrieval_status(),
+        "catalog_index": ekt_client.coverage(),
     }
     success = result["ocr"]["available"] if args.require_ocr else True
     if args.ocr_smoke:
