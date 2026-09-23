@@ -1,131 +1,118 @@
-import os
-import sys
-import time
-import unittest
-from unittest.mock import patch
+import concurrent.futures
+from urllib.parse import urlparse
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from fastapi.testclient import TestClient
-from agent_service import agent_service
-from ekt_client import ekt_client
-from main import CART_OFFERS, CART_STORE, app
+from backend.tests.support import APIHarness
+from cart_service import CartService
+from settings import OFFER_TTL, SESSION_TTL
 
 
-PRODUCT = {
-    "id": 123,
-    "name": "Автоматический выключатель 3P 160A",
-    "article": "ABC-123",
-    "price": 64920,
-    "quantity": 3,
-    "stock_verified": True,
-    "image": None,
-    "stores": [],
-    "specifications": [],
-    "data_quality_warnings": [],
-}
-
-
-class CartGuardrailTests(unittest.TestCase):
-    def setUp(self):
-        CART_STORE.clear()
-        CART_OFFERS.clear()
-        agent_service.pending_offers.clear()
-        self.client = TestClient(app)
-        self.detail_patch = patch.object(ekt_client, "get_product_detail", return_value=PRODUCT.copy())
-        self.detail_patch.start()
-        self.addCleanup(self.detail_patch.stop)
-
-    def test_offer_is_bound_to_session_product_and_quantity_and_used_once(self):
-        session = "?session_id=buyer-a"
-        offer = self.client.post("/api/cart/offer" + session, json={"product_id": 123, "quantity": 2})
-        self.assertEqual(offer.status_code, 200)
-        token = offer.json()["offer_token"]
-
-        base = {"product_id": 123, "quantity": 2, "confirmed": True, "offer_token": token}
-        self.assertEqual(self.client.post("/api/cart/add?session_id=buyer-b", json=base).status_code, 409)
-        self.assertEqual(self.client.post("/api/cart/add" + session, json={**base, "quantity": 1}).status_code, 409)
-        self.assertEqual(self.client.post("/api/cart/add" + session, json={**base, "confirmed": False}).status_code, 409)
-        self.assertEqual(self.client.get("/api/cart" + session).json()["total_items"], 0)
-
-        added = self.client.post("/api/cart/add" + session, json=base)
+class CartGuardrailTests(APIHarness):
+    def test_explicit_confirmation_and_single_use(self):
+        offer = self.offer(quantity=2).json()
+        for change in ({"confirmed": False}, {"offer_token": None}, {"quantity": 1}, {"product_id": 1003}):
+            self.assertEqual(self.confirm(offer, **change).status_code, 409)
+        self.assertEqual(self.cart()["total_items"], 0)
+        added = self.confirm(offer)
         self.assertEqual(added.status_code, 200)
-        self.assertEqual(added.json()["cart_confirmation"]["article"], PRODUCT["article"])
-        self.assertEqual(added.json()["cart_confirmation"]["price"], PRODUCT["price"])
-        self.assertEqual(self.client.get("/api/cart" + session).json()["total_items"], 2)
-        self.assertEqual(self.client.post("/api/cart/add" + session, json=base).status_code, 409)
-        self.assertEqual(
-            self.client.post("/api/cart/offer" + session, json={"product_id": 123, "quantity": 2}).status_code,
-            409,
-        )
+        self.assertIn("TEST-1001", added.json()["answer"])
+        self.assertEqual(added.json()["cart_confirmation"]["quantity_added"], 2)
+        self.assertEqual(self.confirm(offer).status_code, 409)
+        self.assertEqual(self.cart()["total_items"], 2)
 
-    def test_stock_is_rechecked_after_offer(self):
-        session = "?session_id=buyer-stale"
-        offer = self.client.post("/api/cart/offer" + session, json={"product_id": 123, "quantity": 2})
-        self.assertEqual(offer.status_code, 200)
-        with patch.object(ekt_client, "get_product_detail", return_value={**PRODUCT, "quantity": 1}):
-            added = self.client.post("/api/cart/add" + session, json={
-                "product_id": 123, "quantity": 2, "confirmed": True,
-                "offer_token": offer.json()["offer_token"],
-            })
-        self.assertEqual(added.status_code, 409)
-        self.assertEqual(self.client.get("/api/cart" + session).json()["total_items"], 0)
+    def test_unknown_session_and_other_session_cannot_confirm(self):
+        self.assertEqual(self.client.get("/api/cart").status_code, 401)
+        self.assertEqual(self.client.get("/api/cart?session_id=" + "x" * 43).status_code, 401)
+        offer = self.offer().json()
+        other = self.client.post("/api/session").json()["session_id"]
+        result = self.client.post("/api/cart/add", headers={"X-Session-Id": other}, json={
+            "product_id": 1001, "quantity": 1, "confirmed": True, "offer_token": offer["offer_token"]})
+        self.assertEqual(result.status_code, 409)
+        self.assertEqual(self.client.get("/api/cart", headers={"X-Session-Id": other}).json()["total_items"], 0)
 
-    def test_chat_confirmation_requires_matching_pending_offer(self):
-        with patch.object(agent_service, "client", None), patch.object(
-            ekt_client, "search_products", return_value=[{"id": 123, "name": PRODUCT["name"]}]
-        ):
-            session = "buyer-chat"
-            query = self.client.post("/api/agent/chat", json={"message": "Артикул ABC-123", "session_id": session})
-            self.assertEqual(query.status_code, 200)
-            self.assertFalse(query.json()["cart_updated"])
-            self.assertEqual(query.json()["sources"][0]["id"], 123)
+    def test_price_stock_and_cumulative_quantity(self):
+        offer = self.offer(quantity=2).json()
+        self.transport.products[1001]["price"] = 1100
+        self.assertEqual(self.confirm(offer).json()["code"], "price_changed")
+        offer = self.offer(quantity=2).json()
+        self.transport.products[1001]["quantity"] = 1
+        self.assertEqual(self.confirm(offer).json()["code"], "insufficient_stock")
+        self.transport.products[1001]["quantity"] = 3
+        self.assertEqual(self.confirm(offer).status_code, 200)
+        self.assertEqual(self.offer(quantity=2).json()["code"], "insufficient_stock")
+        self.assertEqual(self.cart()["total_items"], 2)
 
-            wrong_quantity = self.client.post("/api/agent/chat", json={"message": "Да, добавь 2 шт.", "session_id": session})
-            self.assertFalse(wrong_quantity.json()["cart_updated"])
-            self.assertEqual(self.client.get("/api/cart?session_id=" + session).json()["total_items"], 0)
+    def test_unavailable_catalog_cannot_use_cached_stock(self):
+        offer = self.offer().json()
+        self.transport.fail = True
+        self.assertEqual(self.confirm(offer).status_code, 503)
+        self.assertEqual(self.cart()["total_items"], 0)
 
-            confirmed = self.client.post("/api/agent/chat", json={"message": "Да, добавь", "session_id": session})
-            self.assertTrue(confirmed.json()["cart_updated"])
-            self.assertIn(PRODUCT["article"], confirmed.json()["answer"])
-            self.assertEqual(self.client.get("/api/cart?session_id=" + session).json()["total_items"], 1)
+    def test_expired_offer_and_session(self):
+        offer = self.offer().json()
+        self.clock.now += OFFER_TTL + 1
+        self.assertEqual(self.confirm(offer).status_code, 409)
+        self.clock.now += SESSION_TTL
+        self.assertEqual(self.client.get("/api/cart", headers=self.headers).status_code, 401)
 
-    def test_model_supplied_confirmed_flag_cannot_mutate_cart(self):
-        agent_service.pending_offers["tool-session"] = {
-            "product_id": 123, "quantity": 1, "created_at": time.time(),
-        }
-        result, mutation = agent_service.execute_tool(
-            "add_to_cart_confirmed",
-            {"product_id": 123, "quantity": 1, "user_confirmed": True},
-            CART_STORE,
-            "tool-session",
-        )
-        self.assertEqual(result["status"], "rejected")
-        self.assertIsNone(mutation)
-        self.assertNotIn("tool-session", CART_STORE)
+    def test_concurrent_replays_only_add_once(self):
+        offer = self.offer(quantity=2).json()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+            results = list(pool.map(lambda _: self.confirm(offer).status_code, range(5)))
+        self.assertEqual(results.count(200), 1)
+        self.assertEqual(self.cart()["total_items"], 2)
 
-    def test_upload_rejects_invalid_file_and_matches_quantity(self):
-        unsupported = self.client.post("/api/agent/upload-spec", files={
-            "file": ("spec.exe", b"payload", "application/octet-stream"),
-        })
-        self.assertEqual(unsupported.status_code, 415)
-        empty = self.client.post("/api/agent/upload-spec", files={
-            "file": ("spec.txt", b"", "text/plain"),
-        })
-        self.assertEqual(empty.status_code, 422)
+    def test_quantity_validation_and_packaging(self):
+        for qty in (0, -1, 1.5, True, "2", 100001):
+            self.assertEqual(self.offer(quantity=qty).status_code, 422)
+        self.transport.products[1001]["properties"]["KRATNOST_MIN"] = "2"
+        self.assertEqual(self.offer(quantity=1).json()["code"], "packaging_mismatch")
+        self.assertEqual(self.offer(quantity=3).status_code, 409)
+        self.assertEqual(self.offer(quantity=2).status_code, 200)
 
-        with patch.object(
-            ekt_client, "search_products", return_value=[{"id": 123, "_match_type": "exact"}]
-        ):
-            response = self.client.post("/api/agent/upload-spec", files={
-                "file": ("spec.txt", "Спецификация\nТовар ABC-123 2 шт.".encode(), "text/plain"),
-            })
-        self.assertEqual(response.status_code, 200)
-        estimate = response.json()["estimate"]
-        self.assertEqual(estimate["total_positions_found"], 1)
-        self.assertEqual(estimate["matched_items"][0]["quantity"], 2)
-        self.assertEqual(estimate["total_estimate_kzt"], 2 * PRODUCT["price"])
+    def test_chat_confirmation_bound_to_offered_quantity(self):
+        queried = self.chat("Артикул TEST-1001 2 шт.").json()
+        self.assertEqual(queried["pending_offer"]["quantity"], 2)
+        for message in ("Да, добавь 3 шт.", "Да, добавь 0 шт."):
+            self.assertFalse(self.chat(message).json()["cart_updated"])
+        accepted = self.chat("Да, добавь").json()
+        self.assertTrue(accepted["cart_updated"])
+        self.assertEqual(self.cart()["total_items"], 2)
+        self.assertFalse(self.chat("Да, добавь").json()["cart_updated"])
 
+    def test_negations_questions_quotes_are_not_consent(self):
+        for message in ("не добавляй", "не подтверждаю", "если я скажу да добавь", "Да, добавь?", "«Да, добавь»"):
+            self.chat("Артикул TEST-1001")
+            self.assertFalse(self.chat(message).json()["cart_updated"], message)
+            self.assertEqual(self.cart()["total_items"], 0)
+            self.assertFalse(self.chat("Да, добавь").json()["cart_updated"])
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_tool_cannot_authorize_its_own_write(self):
+        self.chat("Артикул TEST-1001")
+        result = self.agent.execute_tool("add_to_cart_confirmed", {"product_id": 1001, "quantity": 1, "user_confirmed": True})
+        self.assertEqual(result["error"], "tool_not_allowed")
+        self.assertEqual(self.cart()["total_items"], 0)
+
+    def test_persistence_current_read_link_and_csv(self):
+        self.assertEqual(self.confirm(self.offer().json()).status_code, 200)
+        url = self.cart()["checkout_url"]
+        reopened = CartService(self.catalog, self.carts.db_path, self.clock)
+        self.assertEqual(reopened.snapshot(self.sid)["total_items"], 1)
+        self.confirm(self.offer().json())
+        page = self.client.get(urlparse(url).path)
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("TEST-1001", page.text)
+        self.assertIn(">2</td>", page.text)
+        self.assertEqual(page.headers["referrer-policy"], "no-referrer")
+        exported = self.client.get("/api/cart/export", headers=self.headers)
+        self.assertIn("TEST-1001", exported.text)
+        self.assertEqual(self.cart()["handoff_status"], "not_configured")
+
+    def test_read_link_expiry_and_html_escaping(self):
+        self.transport.products[1001]["name"] = "<script>alert(1)</script>"
+        self.confirm(self.offer().json())
+        path = urlparse(self.cart()["checkout_url"]).path
+        page = self.client.get(path).text
+        self.assertNotIn("<script>", page)
+        self.assertIn("&lt;script&gt;", page)
+        self.clock.now += OFFER_TTL + 1
+        self.assertEqual(self.client.get(path).status_code, 404)

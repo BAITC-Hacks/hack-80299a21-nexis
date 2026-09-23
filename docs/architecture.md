@@ -1,75 +1,58 @@
-# 🏛️ NEXIS Architecture & System Design — ekt.kz AI Assistant
+# Архитектура NEXIS backend
 
-> **HackAlem AI 2026** — 5-Hour Sprint  
-> **Team**: NEXIS (Frontend Dev & Backend/AI Dev)
+Актуально для API v2, 23 сентября 2026.
 
----
+~~~mermaid
+flowchart TD
+    UI[Чат или API клиент] --> API[FastAPI: валидация, CORS, лимиты]
+    API --> Agent[AgentService]
+    Agent --> Tools[Read-only Function Calling]
+    Tools --> Catalog[EktClient: поиск, детали, аналоги]
+    Agent --> KB[Версионированные правила покупки]
+    API --> Catalog
+    Catalog --> EKT[GET API ekt.kz]
+    API --> Parser[Спецификации и локальный OCR]
+    Parser --> Catalog
+    Agent --> Cart[CartService: явное подтверждение]
+    API --> Cart
+    Cart --> Catalog
+    Cart --> DB[(SQLite)]
+    DB --> View[Страница текущей демо-корзины]
+~~~
 
-## 1. System Overview
+## Модули
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                 Frontend (Next.js / React)                 │
-│  - Interactive Chat Widget with Reasoning Steps Timeline    │
-│  - Cart Preview & Direct Checkout Link                     │
-│  - Product Cards (Specs, Stock per warehouse, Certificates) │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ JSON REST API (CORS enabled)
-┌──────────────────────────────▼──────────────────────────────┐
-│                  Backend (Python / FastAPI)                 │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │                Agentic AI Controller                  │  │
-│  │   (OpenAI GPT-4o-mini / Function Calling Engine)      │  │
-│  └───────┬──────────────┬───────────────┬────────────────┘  │
-│          │              │               │                   │
-│          ▼              ▼               ▼                   │
-│   ┌────────────┐ ┌─────────────┐ ┌─────────────┐            │
-│   │ Tools:     │ │ Guardrails: │ │  Knowledge  │            │
-│   │ - Search   │ │ - Explicit  │ │     Base    │            │
-│   │ - Detail   │ │   Cart Add  │ │ (FAQ, Terms,│            │
-│   │ - Stock    │ │ - Stock Max │ │  Delivery,  │            │
-│   │ - Analogs  │ │ - No PII    │ │  Payment)   │            │
-│   └──────┬─────┘ └─────────────┘ └─────────────┘            │
-│          │                                                  │
-└──────────┼──────────────────────────────────────────────────┘
-           ▼
-┌─────────────────────────────────────────────────────────────┐
-│             Live ekt.kz Catalog & Stores API                │
-│  - https://ekt.kz/api/products                              │
-│  - https://ekt.kz/api/products/detail?id={id}               │
-│  - Basic Auth credentials loaded from local .env            │
-└─────────────────────────────────────────────────────────────┘
-```
+- main.py: HTTP-контракт, строгие request-модели, CORS, ошибки, лимиты, загрузка, HTML корзины.
+- agent_service.py: ограниченный цикл read-only инструментов, извлечение источников, формирование ответа из проверенных данных. При отсутствии/сбое модели использует детерминированный поиск.
+- ekt_client.py: Basic Auth из окружения, GET API партнёра, TTL кеш, репрезентативный поиск, нормализация и сравнение характеристик.
+- cart_service.py: единственная реализация изменения корзины, SQLite и анонимные bearer-сессии.
+- spec_parser.py: ограниченное извлечение документов, сопоставление строк с каталогом и частичная смета.
+- knowledge_base.py: небольшой retrieval-корпус с ключевыми словами, ссылками и датами проверки. Векторной БД нет.
+- settings.py: общая конфигурация и ошибки сервисов.
 
----
+## Граница между моделью и действиями
 
-## 2. Key Modules & Responsibilities
+LLM выбирает search_products, get_product_detail, find_analogs, query_knowledge_base и check_city_stock. Результат каждого вызова возвращается в tool loop. Не более трёх итераций и шести инструментов; ошибки переводят запрос на тот же каталог через правила. Свободный ответ модели не используется как источник цены или наличия.
 
-1. **`backend/services/catalog_service.py`**:
-   - Fetches products from `https://ekt.kz/api/products`.
-   - Local in-memory / SQLite caching for millisecond response times.
-   - Fuzzy search and semantic query resolution (by name, article, characteristics).
-   - Analog finder algorithm (matches category `OBYEM`, current, voltage, poles, brand).
+Инструмента записи у модели нет. Chat-подтверждение разбирается сервером и относится только к сохранённому предложению. HTTP кнопка использует тот же CartService. reasoning_steps — журнал выполненных действий, возвращаемый в JSON после ответа; потоковая передача/SSE не реализована.
 
-2. **`backend/services/agent_service.py`**:
-   - OpenAI tool execution loop.
-   - Registered Tools:
-     - `search_products(query: str, category: Optional[str])`
-     - `get_product_detail(product_id: int)`
-     - `check_stock(product_id: int, city: Optional[str])`
-     - `find_analogs(product_id: int)`
-     - `get_purchase_terms(topic: str)` (delivery, payment, MOQ, legal entities)
-     - `propose_add_to_cart(product_id: int, quantity: int)`
-     - `confirm_add_to_cart(product_id: int, quantity: int)`
-   - Emits structured `reasoning_steps` for frontend visualization.
+## Транзакция корзины
 
-3. **`backend/guardrails.py`**:
-   - Explicit confirmation validator: ensures `confirm_add_to_cart` is only executed when user explicitly said yes.
-   - Stock validator: ensures `quantity <= available_stock`.
+1. Новая случайная сессия /api/session; в SQLite хранится её хеш.
+2. Подготовка предложения: свежая карточка, количество, кратность, совокупный остаток.
+3. Предложение связывает сессию, ID, количество, цену, одноразовый токен и срок.
+4. Явное подтверждение: повторный GET карточки.
+5. BEGIN IMMEDIATE, повторная проверка предложения и совокупного количества, запись и потребление токена в одной транзакции.
+6. Динамический ответ и ссылка с отдельным токеном чтения показывают текущую SQLite корзину.
 
-4. **`frontend/`**:
-   - Modern Next.js chat interface.
-   - Displays real-time reasoning steps badge (Search -> Stock Check -> Reasoning).
-   - Product preview card with buy confirmation button.
-   - Live cart widget with link to `https://ekt.kz/personal/cart/`.
+Запрос к партнёру не является резервированием. Цена в сохранённой корзине — цена последнего подтверждённого добавления; при фактическом заказе требуется проверка у партнёра. Внешней записи в корзину/CRM нет.
+
+## Достоверность
+
+Неизвестные цена/остаток/минимальная партия имеют null. Ноль — только подтверждённое число из API. Просроченный кеш после ошибки не разрешает запись в корзину. Точные ID доступны напрямую; поиск остальных запросов ограничен страницами и раскрывает coverage.
+
+Аналоги проверяются по поддерживаемому семейству и известным электрическим параметрам. Ток, напряжение, отключающая способность и дифференциальный ток приводятся к единицам. Неоднозначные диапазоны и конфликт текущих данных не считаются совпадением. Рекомендация содержит совпавшие параметры и требует проверки условий применения по документации производителя.
+
+## Эксплуатация
+
+Один процесс с SQLite подходит для демонстрации. Кеш и rate limiter находятся в памяти процесса. Для общего каталога, множества воркеров и production нужны внешний индекс/кеш, общий лимитер, SLA-наблюдение, HTTPS и договорённость о сессиях/корзине ekt.kz. Производительность на реальной нагрузке не измерялась.

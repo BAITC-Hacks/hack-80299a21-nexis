@@ -1,263 +1,310 @@
+"""Read-only EKT catalog integration. Missing facts remain unknown."""
+import copy
+import math
 import os
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from threading import RLock
+from urllib.parse import urljoin, urlparse
+
 import requests
 from requests.auth import HTTPBasicAuth
-from typing import List, Dict, Any, Optional
-from dotenv import load_dotenv
 
-load_dotenv()
+from settings import env_int
 
-API_BASE = os.getenv("EKT_API_BASE", "https://ekt.kz/api")
-API_USER = os.getenv("EKT_API_USER", "")
-API_PASS = os.getenv("EKT_API_PASS", "")
 
-class EktClient:
-    """Client for ekt.kz catalog and product APIs with in-memory caching."""
-    def __init__(self):
-        self.auth = HTTPBasicAuth(API_USER, API_PASS) if API_USER and API_PASS else None
-        self.headers = {
-            "Accept": "application/json",
-            "User-Agent": "HackAlem-NEXIS-Agent/1.0"
-        }
-        self._catalog_cache: List[Dict[str, Any]] = []
-        self._details_cache: Dict[int, Dict[str, Any]] = {}
-        self._loaded_pages = 0
-        self._is_indexed = False
-
-    def preload_catalog(self, pages: int = 5, force: bool = False):
-        """Warm up local cache with catalog items for fast search & analog lookup."""
-        if self._loaded_pages >= pages and not force:
-            return
-        if not self.auth:
-            return
-        
-        all_items = []
-        start_page = 1 if force else self._loaded_pages + 1
-        for page in range(start_page, pages + 1):
-            try:
-                resp = requests.get(
-                    f"{API_BASE}/products?page={page}",
-                    auth=self.auth,
-                    headers=self.headers,
-                    timeout=8
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    items = data.get("items", [])
-                    if not isinstance(items, list):
-                        break
-                    all_items.extend(items)
-                    per_page = int(data.get("per_page", len(items)) or len(items))
-                    if not items or (per_page and len(items) < per_page):
-                        self._loaded_pages = page
-                        break
-                    self._loaded_pages = page
-                else:
-                    break
-            except (requests.RequestException, ValueError, TypeError) as e:
-                print(f"[EktClient] Warning: preload page {page} failed: {e}")
-                break
-        
-        if all_items:
-            merged = self._catalog_cache + all_items
-            self._catalog_cache = list({item.get("id"): item for item in merged if item.get("id")}.values())
-            self._is_indexed = True
-            print(f"[EktClient] Preloaded {len(self._catalog_cache)} products into memory.")
-
-    def search_products(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Search catalog pages by exact article/id first and then token relevance."""
-        self.preload_catalog(pages=4)
-        query = str(query or "").strip().lower()
-        if not query:
-            return []
-        query_compact = re.sub(r"[^\w]", "", query)
-        raw_tokens = re.findall(r"[\w]+", query, flags=re.UNICODE)
-        stop_words = {"найди", "покажи", "есть", "ли", "мне", "нужен", "нужна", "купить", "хочу", "подскажи", "товар", "пожалуйста", "проверь", "наличие"}
-        tokens = [token for token in raw_tokens if token not in stop_words and len(token) > 1]
-        if not tokens:
-            tokens = raw_tokens
-
-        # A pure numeric query is commonly an ekt product id or article.
-        exact_matches = []
-        for item in self._catalog_cache:
-            article = str(item.get("article", "")).lower()
-            item_id = str(item.get("id", ""))
-            supplier_article = str((item.get("properties") or {}).get("ARTIKULPOSTAVSHCHIKA", "")).lower()
-            identifiers = {re.sub(r"[^\w]", "", value) for value in (article, item_id, supplier_article)}
-            if query_compact and query_compact in identifiers:
-                exact_matches.append(dict(item, _match_score=100, _match_type="exact"))
-        if exact_matches:
-            return exact_matches[:limit]
-
-        # Score items by token overlap
-        scored = []
-        for item in self._catalog_cache:
-            name = str(item.get("name", "")).lower()
-            article = str(item.get("article", "")).lower()
-            properties = " ".join(str(value) for value in (item.get("properties") or {}).values()).lower()
-            text = f"{name} {article} {properties}"
-            score = sum(1 for token in tokens if token in text)
-            if score > 0:
-                scored.append((score, dict(item, _match_score=score, _match_type="text")))
-
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        if not scored:
-            return []
-        # Do not return an unrelated first catalog page when no query tokens match.
-        threshold = 1 if len(tokens) <= 2 else 2
-        return [item for score, item in scored[:limit] if score >= threshold]
-
-    def get_product_detail(self, product_id: int, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
-        """Fetch full product detail including stock per city warehouse and specs."""
-        if not force_refresh and product_id in self._details_cache:
-            return self._details_cache[product_id]
-
-        if not self.auth:
-            return None
-        try:
-            resp = requests.get(
-                f"{API_BASE}/products/detail?id={product_id}",
-                auth=self.auth,
-                headers=self.headers,
-                timeout=8
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                if not isinstance(data, dict) or data.get("id") is None:
-                    return None
-                data = self._normalise_detail(data)
-                data["last_checked_at"] = datetime.now(timezone.utc).isoformat()
-                self._details_cache[product_id] = data
-                return data
-        except Exception as e:
-            print(f"[EktClient] Failed to fetch product {product_id}: {e}")
-
+def number(value):
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        result = float(str(value).replace(",", ".").replace("\u00a0", "").strip())
+        return result if math.isfinite(result) and result >= 0 else None
+    except (ValueError, TypeError):
         return None
 
-    @staticmethod
-    def _normalise_detail(data: Dict[str, Any]) -> Dict[str, Any]:
-        """Expose stable frontend fields while retaining the partner's original properties."""
-        properties = data.get("properties") if isinstance(data.get("properties"), dict) else {}
-        spec_keys = {
-            "OBYEM": "Тип изделия",
-            "KOLICHESTVO_POLYUSOV": "Количество полюсов",
-            "NOMINALNAYA_OTKLYUCHAYUSHCHAYA_SPOSOBNOST": "Отключающая способность",
-            "NOMINALNOE_NAPRYAZHENIE": "Номинальное напряжение",
-            "NOMINALNYY_TOK": "Номинальный ток по свойству каталога",
-            "TIP_USTANOVKI": "Тип установки",
-            "TORGOVAYA_MARKA": "Торговая марка",
-        }
-        specifications = [
-            {"name": label, "value": str(properties[key])}
-            for key, label in spec_keys.items()
-            if properties.get(key) not in (None, "", [])
-        ]
-        stores = data.get("stores") if isinstance(data.get("stores"), list) else []
-        normalized_stores = [
-            {"id": store.get("id"), "name": str(store.get("name", "")), "quantity": max(0, int(store.get("quantity", 0) or 0))}
-            for store in stores if isinstance(store, dict)
-        ]
-        cert_url = data.get("certificate_url") or data.get("certificate_link")
-        for key, value in properties.items():
-            if "CERT" in str(key).upper() or "SERT" in str(key).upper():
-                if isinstance(value, str) and value.startswith(("https://", "http://")):
-                    cert_url = cert_url or value
-        data = dict(data)
-        data["stores"] = normalized_stores
-        data["quantity"] = max(0, int(data.get("quantity", 0) or 0)) if data.get("quantity") is not None else None
-        data["specifications"] = specifications
-        data["certificate_url"] = cert_url
-        data["stock_verified"] = "quantity" in data and data.get("quantity") is not None
-        warnings = []
-        name_current = EktClient._first_number(data.get("name") or "", r"(?:а|a)\b")
-        property_current = EktClient._first_number(properties.get("NOMINALNYY_TOK"), r"(?:а|a)\b")
-        if name_current is not None and property_current is not None and name_current != property_current:
-            warnings.append(
-                f"Номинальный ток расходится: в названии указано {name_current:g} А, "
-                f"в свойстве каталога — {property_current:g} А. Нужна проверка карточки."
+
+def measure(value):
+    matches = re.findall(r"\d+(?:[.,]\d+)?", str(value or ""))
+    return number(matches[0]) if len(matches) == 1 else None
+
+
+def rating(value, kind):
+    """Normalize A/V/kA/mA; ambiguous ranges cannot establish compatibility."""
+    result = measure(value)
+    if result is None:
+        return None
+    units = re.sub(r"[\d\s.,]", "", str(value).lower()).translate(str.maketrans({"а": "a", "в": "v", "к": "k", "м": "m"}))
+    units = units.replace("ac", "").replace("dc", "")
+    factors = {"current": {"": 1, "a": 1, "ka": 1000, "ma": .001},
+               "voltage": {"": 1, "v": 1, "kv": 1000},
+               "capacity": {"": 1, "ka": 1, "a": .001},
+               "leakage": {"": 1, "ma": 1, "a": 1000}}
+    factor = factors[kind].get(units)
+    return result * factor if factor is not None else None
+
+
+def utc(timestamp):
+    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
+
+
+def safe_url(value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+    url = urljoin("https://ekt.kz/", value.strip())
+    parsed = urlparse(url)
+    return url if parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username else None
+
+
+SPEC_NAMES = {
+    "OBYEM": "Тип изделия", "KOLICHESTVO_POLYUSOV": "Число полюсов",
+    "NOMINALNYY_TOK": "Номинальный ток", "NOMINALNOE_NAPRYAZHENIE": "Напряжение",
+    "NOMINALNAYA_OTKLYUCHAYUSHCHAYA_SPOSOBNOST": "Отключающая способность",
+    "TIP_USTANOVKI": "Монтаж", "TORGOVAYA_MARKA": "Марка",
+    "SECHENIE": "Сечение", "KOLICHESTVO_ZHIL": "Число жил",
+    "KHARAKTERISTIKA_SRABATYVANIYA": "Характеристика срабатывания",
+    "NOMINALNYY_OTKLYUCHAYUSHCHIY_DIFFERENTSIALNYY_TOK": "Дифференциальный ток",
+}
+
+
+class EktClient:
+    def __init__(self, requester=None, clock=time.time):
+        self.base = os.getenv("EKT_API_BASE", "https://ekt.kz/api").rstrip("/")
+        user, password = os.getenv("EKT_API_USER", ""), os.getenv("EKT_API_PASS", "")
+        self.auth = HTTPBasicAuth(user, password) if user and password else None
+        self.requester = requester or requests.get
+        self.clock = clock
+        self.catalog_ttl = env_int("EKT_CATALOG_TTL_SECONDS", 300)
+        self.detail_ttl = env_int("EKT_DETAIL_TTL_SECONDS", 30)
+        self.search_pages = env_int("EKT_CATALOG_PAGES", 4, 1, 50)
+        self._pages, self._details = {}, {}
+        self._lock = RLock()
+        self.last_error = None
+
+    def _request(self, path, params):
+        if not self.auth:
+            self.last_error = "credentials_missing"
+            return None
+        try:
+            response = self.requester(
+                f"{self.base}/{path}", params=params, auth=self.auth,
+                headers={"Accept": "application/json", "User-Agent": "NEXIS/2.0"},
+                timeout=(3, 6), allow_redirects=False,
             )
+            if response.status_code != 200:
+                self.last_error = f"upstream_http_{response.status_code}"
+                return None
+            data = response.json()
+            self.last_error = None
+            return data
+        except (requests.RequestException, ValueError, TypeError):
+            self.last_error = "upstream_unavailable"
+            return None
+
+    def get_page(self, page=1, force=False):
+        with self._lock:
+            cached = self._pages.get(page)
+            if cached and not force and self.clock() - cached[0] < self.catalog_ttl:
+                return copy.deepcopy(cached[1])
+        data = self._request("products", {"page": page})
+        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            return None
+        checked = self.clock()
+        items = []
+        for item in data["items"]:
+            if isinstance(item, dict) and isinstance(item.get("id"), int):
+                item = self._normalise_detail(item)
+                item.update(last_checked_at=utc(checked), expires_at=utc(checked + self.catalog_ttl), data_source="ekt.kz")
+                items.append(item)
+        result = {"page": page, "per_page": data.get("per_page", len(items)),
+                  "count": len(items), "items": items, "last_checked_at": utc(checked)}
+        with self._lock:
+            self._pages[page] = (checked, result)
+        return copy.deepcopy(result)
+
+    def preload_catalog(self, pages=None, force=False):
+        pages = min(pages or self.search_pages, 50)
+        with ThreadPoolExecutor(max_workers=min(4, pages)) as pool:
+            list(pool.map(lambda page: self.get_page(page, force), range(1, pages + 1)))
+
+    @property
+    def _catalog_cache(self):
+        with self._lock:
+            values = [item for checked, page in self._pages.values()
+                      if self.clock() - checked < self.catalog_ttl for item in page["items"]]
+        return list({item["id"]: copy.deepcopy(item) for item in values}.values())
+
+    def coverage(self):
+        return {"loaded_products": len(self._catalog_cache), "search_pages": self.search_pages,
+                "scope": "representative_sample", "complete_catalog": False}
+
+    @staticmethod
+    def _key(text):
+        return re.sub(r"[\W_]+", "", str(text).lower())
+
+    def search_products(self, query, limit=5):
+        query = str(query or "").lower().strip()
+        if not query:
+            return []
+        # A numeric product id can be retrieved even outside the sampled pages.
+        direct = re.fullmatch(r"(?:id\s*[:=]?\s*)?(\d{1,10})", query)
+        if direct:
+            detail = self.get_product_detail(int(direct[1]))
+            if detail:
+                return [{**detail, "_match_type": "exact", "_match_score": 100}]
+        self.preload_catalog()
+        query = re.sub(r"\b\d+\s*(?:шт\.?|штук|pcs|ед\.?)\b", "", query)
+        words = re.findall(r"[\w./-]+", query)
+        keys = {self._key(word) for word in words}
+        exact, scored = [], []
+        stop = {"найди", "найдите", "покажи", "покажите", "есть", "мне", "нужен", "нужно", "нужна",
+                "купить", "хочу", "товар", "артикул", "пожалуйста", "наличие", "сертификат", "шт", "для", "это"}
+        tokens = [word for word in words if len(word) > 1 and word not in stop]
+        for item in self._catalog_cache:
+            props = item.get("properties") or {}
+            identifiers = [item["id"], item.get("article"), props.get("ARTIKULPOSTAVSHCHIKA")]
+            if any(self._key(value) in keys for value in identifiers if value):
+                exact.append({**item, "_match_type": "exact", "_match_score": 100})
+                continue
+            haystack = f"{item['name']} {item.get('article', '')} {' '.join(map(str, props.values()))}".lower()
+            score = sum(1 for word in tokens if word in haystack)
+            threshold = 1 if len(tokens) <= 2 else 2
+            if score >= threshold:
+                scored.append({**item, "_match_type": "text", "_match_score": score,
+                               "_match_coverage": score / max(len(tokens), 1)})
+        return (exact or sorted(scored, key=lambda item: item["_match_score"], reverse=True))[:limit]
+
+    def get_product_detail(self, product_id, force_refresh=False):
+        if type(product_id) is not int or product_id < 1:
+            return None
+        with self._lock:
+            cached = self._details.get(product_id)
+            if cached and not force_refresh and self.clock() - cached[0] < self.detail_ttl:
+                return copy.deepcopy(cached[1])
+        data = self._request("products/detail", {"id": product_id})
+        if not isinstance(data, dict) or data.get("id") != product_id:
+            return None
+        checked = self.clock()
+        data = self._normalise_detail(data)
+        data.update(last_checked_at=utc(checked), expires_at=utc(checked + self.detail_ttl), data_source="ekt.kz")
+        with self._lock:
+            if len(self._details) >= 2000:
+                oldest = min(self._details, key=lambda key: self._details[key][0])
+                del self._details[oldest]
+            self._details[product_id] = (checked, data)
+        return copy.deepcopy(data)
+
+    @staticmethod
+    def _normalise_detail(raw):
+        data = copy.deepcopy(raw)
+        props = data.get("properties") if isinstance(data.get("properties"), dict) else {}
+        data["properties"] = props
+        data["name"] = str(data.get("name") or "")
+        data["article"] = str(data.get("article") or props.get("CML2_ARTICLE") or "")
+        data["price"], data["quantity"] = number(data.get("price")), number(data.get("quantity"))
+        data["price_verified"], data["stock_verified"] = data["price"] is not None, data["quantity"] is not None
+        data["unit"] = str(data.get("unit") or props.get("EDINITSA_IZMERENIYA") or "шт.")
+        data["min_order_quantity"] = number(props.get("KRATNOST_MIN"))
+        data["order_multiple"] = number(props.get("KRATNOST")) or data["min_order_quantity"]
+        data["stores"] = [
+            {"id": store.get("id"), "name": str(store.get("name", "")), "quantity": number(store.get("quantity"))}
+            for store in data.get("stores", []) if isinstance(store, dict)
+        ] if isinstance(data.get("stores"), list) else []
+        data["specifications"] = [{"name": label, "value": str(props[key])}
+                                  for key, label in SPEC_NAMES.items() if props.get(key) not in (None, "", [])]
+        cert = safe_url(data.get("certificate_url") or data.get("certificate_link"))
+        for key, value in props.items():
+            if re.search("CERT|SERT", key, re.I):
+                values = value if isinstance(value, list) else [value]
+                cert = cert or next((safe_url(v) for v in values if isinstance(v, str) and (v.startswith("http") or v.startswith("/"))), None)
+        data["certificate_url"] = cert
+        data["image"], data["url"] = safe_url(data.get("image")), safe_url(data.get("url"))
+        name = data["name"].lower().replace("×", "x").replace("х", "x")
+        kind = str(props.get("OBYEM") or "").lower() + " " + name
+        family = ("rcbo" if "диф" in kind else "rcd" if "узо" in kind
+                  else "breaker" if "автомат" in kind or re.search(r"\bав\b", kind)
+                  else "cable" if "кабель" in kind or "провод " in kind else "unknown")
+        def from_name(pattern):
+            found = re.search(pattern, name, re.I)
+            return number(found[1]) if found else None
+        name_current = from_name(r"(\d+(?:[.,]\d+)?)\s*[aа]\b")
+        current = rating(props["NOMINALNYY_TOK"], "current") if props.get("NOMINALNYY_TOK") else name_current
+        poles = measure(props.get("KOLICHESTVO_POLYUSOV")) or from_name(r"(\d+)\s*(?:p|р|ф)\b")
+        voltage = rating(props["NOMINALNOE_NAPRYAZHENIE"], "voltage") if props.get("NOMINALNOE_NAPRYAZHENIE") else from_name(r"(?<![\d/])(\d+)\s*[вv]\b")
+        capacity_key = "NOMINALNAYA_OTKLYUCHAYUSHCHAYA_SPOSOBNOST"
+        capacity = rating(props[capacity_key], "capacity") if props.get(capacity_key) else from_name(r"(\d+(?:[.,]\d+)?)\s*[кk][аa]\b")
+        cores = measure(props.get("KOLICHESTVO_ZHIL")) or from_name(r"\b(\d+)\s*x\s*\d")
+        section_match = re.search(r"\b\d+\s*x\s*(\d+(?:[.,]\d+)?)", name)
+        section = measure(props.get("SECHENIE")) or (number(section_match[1]) if section_match else None)
+        curve_match = re.search(r"\b([bcdвсд])\s*\d{1,3}\b", name)
+        curve = str(props.get("KHARAKTERISTIKA_SRABATYVANIYA") or (curve_match[1] if curve_match else "")).lower()
+        curve = curve.translate(str.maketrans({"в": "b", "с": "c", "д": "d"}))
+        cable_type = re.search(r"(ввг[а-яa-z()\-]*|пвс|сип|кг|nym)", name)
+        data["technical"] = {"family": family, "current": current, "poles": poles, "voltage": voltage,
+                             "breaking_capacity": capacity, "curve": curve or None,
+                             "leakage_current": rating(props.get("NOMINALNYY_OTKLYUCHAYUSHCHIY_DIFFERENTSIALNYY_TOK"), "leakage"),
+                             "cores": cores, "section": section,
+                             "cable_type": cable_type[1] if cable_type else None}
+        warnings = []
+        if name_current is not None and current is not None and props.get("NOMINALNYY_TOK") and name_current != current:
+            warnings.append(f"Ток в названии ({name_current:g} А) расходится со свойством каталога ({current:g} А). Требуется уточнение.")
         data["data_quality_warnings"] = warnings
         return data
 
-    def find_analogs(self, product: Dict[str, Any], limit: int = 2) -> List[Dict[str, Any]]:
-        """Find analogs with verified positive stock and explain matching properties."""
-        self.preload_catalog(pages=4)
-        if not self._catalog_cache:
+    @staticmethod
+    def analog_match(target, candidate):
+        if target.get("data_quality_warnings") or candidate.get("data_quality_warnings"):
             return []
+        left, right = target.get("technical", {}), candidate.get("technical", {})
+        family = left.get("family")
+        if family != right.get("family"):
+            return []
+        required = {"breaker": ["current", "poles", "voltage", "breaking_capacity"],
+                    "rcbo": ["current", "poles", "voltage", "leakage_current", "breaking_capacity"],
+                    "rcd": ["current", "poles", "voltage", "leakage_current"],
+                    "cable": ["cores", "section", "cable_type"]}.get(family)
+        if not required:
+            return []
+        required = required + [key for key in ("curve", "breaking_capacity") if key not in required and family != "cable" and left.get(key) is not None]
+        labels = {"current": "Ток", "poles": "Полюса", "voltage": "Напряжение",
+                  "breaking_capacity": "Отключающая способность", "curve": "Характеристика",
+                  "leakage_current": "Дифференциальный ток", "cores": "Число жил",
+                  "section": "Сечение", "cable_type": "Тип кабеля"}
+        matches = []
+        for key in required:
+            original, alternative = left.get(key), right.get(key)
+            if original is None or alternative is None:
+                return []
+            if (key == "breaking_capacity" and alternative < original) or (key != "breaking_capacity" and alternative != original):
+                return []
+            matches.append({"name": labels[key], "original": original, "alternative": alternative})
+        return matches
+
+    def find_analogs(self, product, limit=3):
         if product.get("data_quality_warnings"):
             return []
-        target_name = str(product.get("name", "")).lower()
-        target_id = product.get("id")
-        target_props = product.get("properties") or {}
-        target_category = str(target_props.get("OBYEM", "")).lower()
-        target_tokens = set(re.findall(r"[\w]+", target_name))
-        target_current = self._first_number(target_props.get("NOMINALNYY_TOK") or target_name, r"(?:а|a)\b")
-        target_poles = self._first_number(target_props.get("KOLICHESTVO_POLYUSOV") or target_name, r"(?:полюс|p\b|ф\b)")
-        candidates = []
-        for item in self._catalog_cache:
-            if item.get("id") == target_id:
+        self.preload_catalog()
+        family = product.get("technical", {}).get("family")
+        candidates = [item for item in self._catalog_cache
+                      if item["id"] != product["id"] and item.get("technical", {}).get("family") == family]
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            details = list(pool.map(lambda item: self.get_product_detail(item["id"], force_refresh=True), candidates[:16]))
+        matches = []
+        for detail in details:
+            if not detail or not detail["stock_verified"] or detail["quantity"] <= 0:
                 continue
-            item_props = item.get("properties") or {}
-            item_category = str(item_props.get("OBYEM", "")).lower()
-            item_name = str(item.get("name", "")).lower()
-            item_current = self._first_number(item_props.get("NOMINALNYY_TOK") or item_name, r"(?:а|a)\b")
-            item_poles = self._first_number(item_props.get("KOLICHESTVO_POLYUSOV") or item_name, r"(?:полюс|p\b|ф\b)")
-            score = 0
-            rationale = []
-            if target_category and target_category == item_category:
-                score += 4
-                rationale.append("тот же тип изделия")
-            if target_current is not None and target_current == item_current:
-                score += 4
-                rationale.append(f"тот же номинальный ток {target_current} А")
-            if target_poles is not None and target_poles == item_poles:
-                score += 3
-                rationale.append(f"то же число полюсов ({target_poles})")
-            common = target_tokens.intersection(set(re.findall(r"[\w]+", item_name)))
-            meaningful_common = common - {"автоматический", "выключатель", "автомат", "legrand", "iek"}
-            score += min(len(meaningful_common), 3)
-            if score >= 4:
-                candidates.append((score, item, rationale))
-
-        candidates.sort(key=lambda row: row[0], reverse=True)
-        analogs = []
-        for _, cand, rationale in candidates[:max(limit * 4, 6)]:
-            detail = self.get_product_detail(cand.get("id"), force_refresh=True)
-            if not detail or not detail.get("stock_verified") or int(detail.get("quantity") or 0) < 1:
-                continue
-            analogs.append({
-                **detail,
-                "rationale": "; ".join(rationale) if rationale else "Совпали ключевые слова в названии; характеристики нужно сверить перед покупкой.",
-            })
-            if len(analogs) >= limit:
-                break
-        return analogs
+            parameters = self.analog_match(product, detail)
+            if parameters:
+                matches.append({**detail, "matched_parameters": parameters,
+                                "rationale": "; ".join(f"{p['name']}: {p['alternative']}" for p in parameters),
+                                "recommendation_note": "Перед монтажом проверьте габариты и условия применения по документации производителя."})
+        return matches[:limit]
 
     @staticmethod
-    def _first_number(value: Any, suffix_pattern: str) -> Optional[float]:
-        if value is None:
-            return None
-        match = re.search(r"(\d+(?:[.,]\d+)?)\s*" + suffix_pattern, str(value).lower())
-        return float(match.group(1).replace(",", ".")) if match else None
+    def get_purchase_terms():
+        from knowledge_base import purchase_terms
+        return purchase_terms()
 
-    @staticmethod
-    def get_purchase_terms() -> Dict[str, Any]:
-        """Official purchasing conditions for ekt.kz (ТОО «Электрокомплект»)."""
-        return {
-            "payment": [
-                "Безналичный расчет для юридических лиц с предоставлением всех закрывающих документов (ЭСФ, АВР, накладные).",
-                "Банковские карты (Visa, Mastercard, Kaspi Gold) и Kaspi QR / Kaspi Pay для физических и юридических лиц.",
-                "Оплата при получении (наличными или картой в филиалах ekt.kz)."
-            ],
-            "delivery": [
-                "Курьерская доставка по городам: Астана, Алматы, Шымкент, Караганда, Атырау, Тараз, Усть-Каменогорск в день заказа или на следующий рабочий день.",
-                "Самовывоз из 15+ региональных филиалов и складов ekt.kz — бесплатно.",
-                "Экспресс-доставка по всему Казахстану через логистических операторов (Alem Tat, СДЭК) от 1 до 5 дней."
-            ],
-            "minimum_order": "Минимальная партия — от 1 единицы товара (работаем как с розницей, так и с крупным оптом).",
-            "certificates": "Все изделия сертифицированы по стандартам ГОСТ / ТР ТС, паспорта качества и сертификаты соответствия предоставляются по запросу менеджером или прикрепляются к поставке."
-        }
 
-# Global singleton client
 ekt_client = EktClient()

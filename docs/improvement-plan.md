@@ -1,35 +1,58 @@
-# NEXIS Product Improvement Plan
+# План улучшений: результат 11 этапов
 
-Implementation order for the HackAlem AI ekt.kz case. The plan follows the case acceptance criteria and uses the supplied ekt.kz API sample as the catalog schema reference.
+Дата: 23 сентября 2026. Область этой итерации — backend-ai-dev. Первым действием сохранена предыдущая работа коммитом cb8e4dd; затем выполнены изменения ниже. Frontend ветка в этой итерации не редактировалась.
 
-## P0 — trustworthy product data and cart safety
+## Выполнение
 
-- Load ekt.kz Basic Auth only from local environment settings; never commit credentials.
-- Parse catalog pagination from `page`, `per_page`, `count`, and `items`; search by exact id/article before fuzzy name matching.
-- Remove fabricated stock and random-product fallbacks. Report unavailable data as unavailable.
-- Normalize product properties, warehouse stock, certificates, and product links into the API response.
-- Enforce explicit confirmation, authoritative product/price lookup, and aggregate stock limits on every server cart mutation.
-- Store a chat offer per session so a plain confirmation cannot add an unrelated hard-coded product.
-- Return the verified add-to-cart summary from the backend and render it in chat after successful button confirmation.
+| № | Этап исходного плана | Что сделано на backend | Статус и граница |
+| --- | --- | --- | --- |
+| 1 | Закрыть все пути изменения корзины | Единый CartService для чата и /api/cart/add; свежая карточка, строгие количество/подтверждение, сессионный одноразовый токен, проверка цены, кратности и суммарного остатка; SQLite транзакция | Выполнено; API не может доказать физический клик человека, поэтому UI обязан вызывать confirmed:true только после его действия |
+| 2 | Убрать выдуманные данные | Нет фиктивной цены/остатка/сертификата; неизвестное — null, API сбой блокирует добавление; противоречия характеристик отмечаются | Выполнено |
+| 3 | Достоверные карточки | Нормализованные sources, склады, свойства, сертификат, ссылки, время проверки, предупреждения и coverage; API v2 документирован | Backend выполнен; показ всех полей зависит от UI |
+| 4 | Проверять аналоги | Семейство изделия, ток, полюса, напряжение, отключающая способность, дополнительные известные параметры; единицы А/кА/В/кВ/мА; отдельная проверка наличия и rationale | Выполнено для поддерживаемых семейств; нет гарантии найти аналог вне выборки или при недостатке параметров |
+| 5 | Сквозная загрузка PDF | Рабочий multipart endpoint и результаты matched/unmatched; дополнительно DOCX/XLSX/XLS/TXT и изображения через OCR | Серверная часть выполнена; выбор файла → UI-результат в браузере не проверялся и frontend не менялся |
+| 6 | Проверять загрузки и количества | Лимиты файла и всего потока, сигнатуры, ZIP/страницы/пиксели/текст/строки; заголовки и столбцы; пустое количество не становится 1; неоднозначные строки требуют уточнения | Выполнено; фото/сканы требуют отдельного Tesseract runtime |
+| 7 | Честная демо-корзина и переход | Персистентная SQLite, актуальная HTML страница по токену чтения, CSV; metadata demo/not_configured; динамический успешный ответ сохранён | Выполнено для прототипа. Реальная корзина/оформление ekt.kz требуют официального API партнёра |
+| 8 | Документация | Синхронизированы API-контракт, README, инструкции backend, архитектура, интеграция, источники FAQ, .env.example и lock зависимостей | Выполнено |
+| 9 | Улучшить знания | Retrieval по темам без случайной статьи; source_url, verified_at, статус проверки; публичные условия ekt.kz; убраны неподтверждённые тарифы и налоговые обещания | Выполнено как небольшой корпус; векторной БД нет |
+| 10 | Свежесть кеша | TTL списка/деталей, timestamp/expiry, принудительное обновление для добавления и кандидатов-аналогов, копии кеша, явная область поиска | Выполнено; полный индекс каталога не реализован |
+| 11 | Приёмка | 47 автоматических проверок и отдельный live smoke: GET API → карточка → предложение → изолированная демо-корзина → актуальная ссылка | Выполнено для backend; реальная модель/OCR/браузер и нагрузка не входят в эти результаты |
 
-## P1 — complete the main buyer journey
+## Дополнительно
 
-- Return structured product cards and analogs from chat alongside reasoning steps.
-- Find analogs by electrical characteristics and return only candidates whose stock was verified as positive.
-- Connect frontend file uploads to the backend specification parser; validate size and file type server-side.
-- Parse PDF, text, DOCX, and XLSX specifications; report unmatched lines and insufficient stock without overstating availability.
-- Keep the demo cart visibly separate from the real ekt.kz cart until an official cart handoff API is available.
+- Приватные анонимные сессии, истечение срока, изоляция корзин и короткие ссылки чтения.
+- Защита от повторного и одновременного потребления одного подтверждения.
+- CORS localhost:3000/5173, строгие request-модели, лимиты по IP/сессии, понятные ошибки.
+- LLM имеет только read-only инструменты; не может выдать себе разрешение на покупку.
+- Отрицания, цитаты, вопросы, история с ролью system и карточные реквизиты не используются как согласие.
+- Базовые казахские ответы и подтверждение.
+- Честный ручной переход к контактам менеджера и endpoint статуса интеграций.
+- Ответ «товар добавлен» содержит реальное название, артикул, цену, количество, проверенный остаток и актуальную ссылку. Захардкоженных запасных значений нет.
 
-## P2 — polish and acceptance review
+## Подтверждение проверки
 
-- Synchronize the API contract, README, and frontend integration notes with actual routes and schemas.
-- Restrict CORS to the two local frontend origins used during development.
-- Review every Must Have scenario: real article lookup, zero-stock analog, purchase terms, rejected unconfirmed cart writes, quantity caps, cart URL, and uploaded specification.
-- Check Russian/Kazakh response language and graceful behavior when the live catalog or LLM is unavailable.
+Команда: .venv/Scripts/python.exe -m unittest discover -s backend/tests -p "test_*.py" -v.
 
-## Acceptance limits
+47 тестов прошли. Они используют синтетический API, временную SQLite и подставную модель. Покрывают факты/сертификаты/аналоги/условия, price/stock guards, чужие и истёкшие токены, пять конкурентных повторов, перезапуск, CSV/HTML, TTL, PDF/DOCX/XLSX/TXT, OCR-ветки и лимиты потока.
 
-- A catalog or stock API failure must never be presented as a verified price or quantity.
-- A cart write must use catalog data and cannot exceed current stock, including items already in the session cart.
-- A file upload produces a price estimate only for confidently matched lines; all other lines remain for clarification.
-- The external checkout URL is informational unless an official ekt.kz cart integration is configured.
+Live smoke 23.09.2026: карточка 515291 и страница 2 доступны, цена/остаток проверены, 24 записи складов, обнаружено одно противоречие характеристик. Сценарий добавления прошёл во временной локальной корзине. Партнёрских записей: 0. Один прогон занял 0,86 с; это не нагрузочный SLA.
+
+На текущем компьютере executable Tesseract не найден. OCR-ветки проверены с подстановкой результата и на понятную ошибку отсутствующего runtime. Фактическое распознавание изображения здесь не подтверждено.
+
+## Что остаётся вне backend-итерации
+
+1. Подключить/проверить frontend по docs/ekt-integration-guide.md: новая сессия, источники, подтверждение, файл и результат. Эта ветка по просьбе пользователя не менялась.
+2. Получить официальный API реальной корзины и сессии покупателя ekt.kz. Без него нельзя честно заявить выполнение требования оформления в настоящем магазине.
+3. Установить Tesseract с языками и проверить реальные фото/сканы; при необходимости добавить поддержку старого Word .doc.
+4. Проверить модель с действующим OpenAI API ключом на пользовательских запросах и измерить задержку под нагрузкой.
+5. Получить полный поиск/выгрузку каталога и уточнить конфликтующие параметры у партнёра; текущая репрезентативная выборка разрешена ТЗ.
+6. Перед production определить политику хранения/удаления, авторизацию сайта, общий rate limiter и дробные единицы кабельной продукции.
+
+## Источники и запуск
+
+- [Запуск backend и приёмка](../backend/README.md)
+- [Контракт API](api-contract.md)
+- [Архитектура](architecture.md)
+- [Условия партнёра](https://ekt.kz/checkout-delivery/)
+- [Официальные контакты](https://ekt.kz/about/contacts/)
+- [OpenAI Function Calling](https://developers.openai.com/api/docs/guides/function-calling)

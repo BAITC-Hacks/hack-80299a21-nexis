@@ -1,170 +1,264 @@
+"""Bounded document extraction and conservative specification matching."""
 import io
 import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
+import shutil
+import time
+import zipfile
+from concurrent.futures import ThreadPoolExecutor
 
-from ekt_client import ekt_client
+from ekt_client import ekt_client, number
+from settings import ServiceError
+
+MAX_BYTES = 15 * 1024 * 1024
+MAX_ROWS = 250
+MAX_CHARS = 100000
+SUPPORTED = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp"}
 
 
-MAX_SPEC_LINES = 250
-MIN_MATCH_SCORE = 2
+def ocr_available():
+    executable = os.getenv("TESSERACT_CMD") or shutil.which("tesseract")
+    return bool(executable and os.path.isfile(executable))
 
 
 class SpecificationParser:
-    """Extract text from common specification files and match only credible catalog hits."""
+    def __init__(self, catalog=ekt_client):
+        self.catalog = catalog
 
     @staticmethod
-    def extract_text(content: bytes, filename: str) -> str:
+    def validate(content, filename):
         extension = os.path.splitext(filename.lower())[1]
+        if extension not in SUPPORTED:
+            raise ServiceError("Поддерживаются PDF, TXT, DOCX, XLSX, XLS, JPEG, PNG, WEBP. Файл .doc сохраните как .docx.", "unsupported_file", 415)
+        if not content:
+            raise ServiceError("Файл пуст.", "empty_file", 422)
+        if len(content) > MAX_BYTES:
+            raise ServiceError("Файл превышает 15 МиБ.", "file_too_large", 413)
+        signatures = {".pdf": b"%PDF-", ".xls": b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",
+                      ".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff"}
+        if extension in signatures and not content.startswith(signatures[extension]):
+            raise ServiceError("Содержимое файла не соответствует расширению.", "file_signature_mismatch", 415)
+        if extension == ".webp" and not (content[:4] == b"RIFF" and content[8:12] == b"WEBP"):
+            raise ServiceError("Повреждённый WEBP.", "file_signature_mismatch", 415)
+        if extension in {".docx", ".xlsx"}:
+            try:
+                with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                    entries = archive.infolist()
+                    marker = "word/document.xml" if extension == ".docx" else "xl/workbook.xml"
+                    if marker not in archive.namelist():
+                        raise ValueError("missing_document")
+                    if len(entries) > 2000 or sum(entry.file_size for entry in entries) > 50 * 1024 * 1024:
+                        raise ServiceError("Распакованное содержимое слишком велико.", "archive_too_large", 413)
+                    if any(entry.flag_bits & 1 for entry in entries):
+                        raise ServiceError("Защищённые паролем файлы не поддерживаются.", "encrypted_document", 422)
+            except (zipfile.BadZipFile, ValueError):
+                raise ServiceError("Файл не является корректным DOCX/XLSX.", "file_signature_mismatch", 415)
+        return extension
+
+    @staticmethod
+    def _ocr(image):
+        if not ocr_available():
+            raise ServiceError("Для фото и сканов установите Tesseract OCR с языками rus, eng и kaz. Либо отправьте текстовую спецификацию.", "ocr_unavailable", 503)
+        import pytesseract
+        if os.getenv("TESSERACT_CMD"):
+            pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_CMD"]
+        languages = set(pytesseract.get_languages(config=""))
+        chosen = [lang for lang in ("rus", "eng", "kaz") if lang in languages]
+        if not chosen:
+            raise ServiceError("В Tesseract отсутствуют языковые данные rus/eng/kaz.", "ocr_languages_missing", 503)
+        try:
+            return pytesseract.image_to_string(image, lang="+".join(chosen), timeout=10)
+        except RuntimeError:
+            raise ServiceError("Распознавание заняло слишком много времени. Отправьте меньший фрагмент.", "ocr_timeout", 422)
+
+    def extract_text(self, content, filename):
+        extension = self.validate(content, filename)
+        if extension == ".txt":
+            try:
+                text = content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                raise ServiceError("TXT должен быть в UTF-8.", "invalid_text_encoding", 422)
+            if "\x00" in text:
+                raise ServiceError("В TXT обнаружены бинарные данные.", "file_signature_mismatch", 415)
+            return text
         if extension == ".pdf":
             import pymupdf
+            from PIL import Image
             with pymupdf.open(stream=content, filetype="pdf") as document:
-                return "\n".join(page.get_text() for page in document)
-        if extension == ".txt":
-            return content.decode("utf-8-sig", errors="replace")
+                if document.needs_pass:
+                    raise ServiceError("PDF защищён паролем.", "encrypted_document", 422)
+                if len(document) > 50:
+                    raise ServiceError("В PDF больше 50 страниц.", "too_many_pages", 413)
+                text, scans = [], 0
+                for page in document:
+                    words = page.get_text("words", sort=True)
+                    if words:
+                        rows = []
+                        for word in sorted(words, key=lambda w: (round(w[1] / 3), w[0])):
+                            if not rows or abs(word[1] - rows[-1][0]) > 3:
+                                rows.append((word[1], [word]))
+                            else:
+                                rows[-1][1].append(word)
+                        for _, row in rows:
+                            row.sort(key=lambda w: w[0])
+                            line, last_x = "", None
+                            for word in row:
+                                line += (("\t" if word[0] - last_x > 15 else " ") if last_x is not None else "") + word[4]
+                                last_x = word[2]
+                            text.append(line)
+                    else:
+                        scans += 1
+                        if scans > 10:
+                            raise ServiceError("Разделите скан на файлы не более 10 страниц.", "too_many_scans", 413)
+                        if page.rect.width * page.rect.height * 2.25 > 16000000:
+                            raise ServiceError("Страница скана слишком велика.", "image_too_large", 413)
+                        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5), alpha=False)
+                        text.append(self._ocr(Image.open(io.BytesIO(pixmap.tobytes("png")))))
+                    if sum(map(len, text)) > MAX_CHARS:
+                        raise ServiceError("В документе слишком много текста.", "text_too_large", 413)
+                return "\n".join(text)
         if extension == ".docx":
             from docx import Document
-            document = Document(io.BytesIO(content))
-            values = [paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()]
-            for table in document.tables:
-                for row in table.rows:
-                    values.append("\t".join(cell.text.strip() for cell in row.cells))
-            return "\n".join(values)
+            doc = Document(io.BytesIO(content))
+            lines = [p.text for p in doc.paragraphs if p.text.strip()]
+            for table in doc.tables:
+                lines.extend("\t".join(cell.text.strip() for cell in row.cells) for row in table.rows)
+            return "\n".join(lines)
         if extension == ".xlsx":
             from openpyxl import load_workbook
-            workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-            values = []
-            for sheet in workbook.worksheets:
-                for row in sheet.iter_rows(values_only=True):
-                    cells = [str(value).strip() for value in row if value is not None and str(value).strip()]
-                    if cells:
-                        values.append("\t".join(cells))
-            workbook.close()
-            return "\n".join(values)
+            workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True, keep_links=False)
+            try:
+                lines = []
+                for sheet in workbook:
+                    if sheet.max_row and sheet.max_row > 2000 or sheet.max_column and sheet.max_column > 100:
+                        raise ServiceError("Таблица слишком велика.", "table_too_large", 413)
+                    for index, row in enumerate(sheet.iter_rows(values_only=True)):
+                        if index >= 2000:
+                            raise ServiceError("Таблица слишком велика.", "table_too_large", 413)
+                        lines.append("\t".join("" if value is None else str(value) for value in row))
+                        if sum(map(len, lines)) > MAX_CHARS:
+                            raise ServiceError("В таблице слишком много текста.", "text_too_large", 413)
+                return "\n".join(lines)
+            finally:
+                workbook.close()
         if extension == ".xls":
             import xlrd
             workbook = xlrd.open_workbook(file_contents=content)
-            values = []
+            lines = []
             for sheet in workbook.sheets():
-                for row_index in range(sheet.nrows):
-                    cells = [str(value).strip() for value in sheet.row_values(row_index) if str(value).strip()]
-                    if cells:
-                        values.append("\t".join(cells))
-            return "\n".join(values)
-        if extension in {".jpg", ".jpeg", ".png", ".webp"}:
-            from PIL import Image
-            import pytesseract
-            image = Image.open(io.BytesIO(content))
-            try:
-                return pytesseract.image_to_string(image, lang="rus+eng")
-            except pytesseract.TesseractNotFoundError as exc:
-                raise ValueError("Для распознавания фото на сервере нужен установленный Tesseract OCR с языками rus и eng.") from exc
-        raise ValueError("Поддерживаются PDF, TXT, DOCX, XLSX, XLS и изображения JPG, PNG, WEBP.")
+                if sheet.nrows > 2000 or sheet.ncols > 100:
+                    raise ServiceError("Таблица слишком велика.", "table_too_large", 413)
+                lines.extend("\t".join(map(str, sheet.row_values(index))) for index in range(sheet.nrows))
+            return "\n".join(lines)
+        from PIL import Image
+        with Image.open(io.BytesIO(content)) as image:
+            if image.width * image.height > 16000000:
+                raise ServiceError("Изображение превышает 16 мегапикселей.", "image_too_large", 413)
+            image.load()
+            return self._ocr(image)
 
     @staticmethod
-    def _quantity(line: str) -> Tuple[int, Optional[str]]:
-        # Prefer a quantity explicitly followed by a unit so article numbers are not
-        # mistaken for order quantities.
-        match = re.search(r"(?<![\w/])([1-9]\d{0,3})\s*(шт\.?|штук|ед\.?|компл\.?|м(?:етр(?:ов|а)?)?)(?![а-я])", line.lower())
-        if match:
-            unit = "м" if match.group(2).startswith("м") else "шт."
-            return int(match.group(1)), unit
-        # Spreadsheet tables often put a quantity in the final tab-separated column.
-        cells = [cell.strip() for cell in line.split("\t") if cell.strip()]
-        if len(cells) > 1 and re.fullmatch(r"[1-9]\d{0,3}", cells[-1]):
-            return int(cells[-1]), "шт."
-        return 1, None
-
-    @staticmethod
-    def _credible_match(line: str, candidate: Dict[str, Any]) -> bool:
-        if candidate.get("_match_type") == "exact":
-            return True
-        return int(candidate.get("_match_score", 0)) >= MIN_MATCH_SCORE
-
-    @classmethod
-    def parse_specification(cls, content: bytes, filename: str = "specification.pdf") -> Dict[str, Any]:
-        try:
-            raw_text = cls.extract_text(content, filename)
-        except Exception as exc:
-            return {"error": f"Не удалось прочитать файл: {exc}", "lines": []}
-
-        lines = [line.strip() for line in raw_text.splitlines() if len(line.strip()) > 3]
-        ignored = ("спецификация", "проект", "заказчик", "дата", "объект", "подпись", "страница")
-        candidate_lines = [line for line in lines if not (line.lower().startswith(ignored) and len(line.split()) < 5)]
-        if len(candidate_lines) > MAX_SPEC_LINES:
-            return {"error": f"В файле больше {MAX_SPEC_LINES} строк. Разделите спецификацию на части.", "lines": lines[:MAX_SPEC_LINES]}
-
-        matched_items: List[Dict[str, Any]] = []
-        unmatched_items: List[Dict[str, Any]] = []
-        total_estimate = 0.0
-
-        for line in candidate_lines:
-            quantity, unit = cls._quantity(line)
-            results = ekt_client.search_products(line, limit=3)
-            target = next((item for item in results if cls._credible_match(line, item)), None)
-            if not target:
-                unmatched_items.append({"query_line": line, "status": "Не удалось надёжно сопоставить; уточнить у менеджера"})
+    def rows(text):
+        if len(text) > MAX_CHARS:
+            raise ServiceError("Документ превышает лимит извлечённого текста.", "text_too_large", 413)
+        header, output, ignored = None, [], []
+        for line in text.splitlines():
+            if not line.strip():
                 continue
-
-            detail = ekt_client.get_product_detail(target.get("id"))
-            product = detail or target
-            try:
-                unit_price = float(product["price"])
-            except (KeyError, TypeError, ValueError):
-                unit_price = None
-            stock_verified = bool(detail and detail.get("stock_verified"))
-            stock = int(detail.get("quantity") or 0) if stock_verified else None
-            subtotal = round(unit_price * quantity, 2) if unit_price is not None else None
-            if subtotal is not None:
-                total_estimate += subtotal
-
-            analog = None
-            if stock_verified and stock == 0:
-                analogs = ekt_client.find_analogs(detail, limit=1)
-                analog = analogs[0] if analogs else None
-
-            if unit_price is None:
-                status = "Цена не получена; уточнить"
-            elif not stock_verified:
-                status = "Остаток не удалось проверить"
-            elif stock >= quantity:
-                status = "В наличии"
-            elif stock > 0:
-                status = "Частично в наличии"
+            cells = [cell.strip() for cell in line.split("\t")]
+            lowered = [cell.lower() for cell in cells]
+            quantity_columns = [i for i, cell in enumerate(lowered) if re.fullmatch(r"кол[ -]?во\.?|количество|qty|quantity|саны", cell)]
+            if quantity_columns:
+                header = {"quantity": quantity_columns[0],
+                          "article": next((i for i, cell in enumerate(lowered) if cell in {"артикул", "код", "sku", "article"}), None),
+                          "name": next((i for i, cell in enumerate(lowered) if cell in {"наименование", "название", "description", "товар"}), None),
+                          "unit": next((i for i, cell in enumerate(lowered) if re.fullmatch(r"ед\.?\s*изм\.?|единица|unit", cell)), None)}
+                ignored.append(line)
+                continue
+            if re.match(r"^(?:спецификация|specification|проект|заказчик|дата|объект|подпись|страница|итого|наименование)\b", line.lower()):
+                ignored.append(line)
+                continue
+            quantity, unit, query = None, None, line
+            if header and len(cells) > header["quantity"]:
+                quantity = number(cells[header["quantity"]])
+                selected = [cells[header[key]] for key in ("article", "name") if header[key] is not None and header[key] < len(cells)]
+                query = " ".join(selected) if selected else " ".join(cells[:header["quantity"]])
+                if header["unit"] is not None and header["unit"] < len(cells):
+                    unit = cells[header["unit"]]
             else:
-                status = "Нет в наличии"
+                match = re.search(r"(?<![\w.,-])(\d+(?:[.,]\d+)?)\s*(шт\.?|штук|ед\.?|дана|pcs|м)(?![\w²])", line, re.I)
+                if not match:
+                    match = re.search(r"(?:шт\.?|дана|pcs|ед\.?)\s+(\d+(?:[.,]\d+)?)\s*$", line, re.I)
+                if match:
+                    quantity = number(match[1])
+                    unit = "м" if re.search(r"\d\s*м\b", match[0]) else "шт."
+                    query = line[:match.start()] + " " + line[match.end():]
+            valid_quantity = quantity is not None and quantity > 0 and quantity.is_integer() and quantity <= 100000
+            output.append({"query_line": line, "query": query.strip(), "quantity": int(quantity) if valid_quantity else None,
+                           "unit": unit, "quantity_warning": None if valid_quantity else "Уточните целое положительное количество."})
+        if len(output) > MAX_ROWS:
+            raise ServiceError("В спецификации больше 250 позиций. Разделите файл.", "too_many_rows", 413)
+        return output, ignored
 
-            matched_items.append({
-                "query_line": line,
-                "product_id": product.get("id"),
-                "name": product.get("name"),
-                "article": product.get("article", "Н/Д"),
-                "unit_price": unit_price,
-                "quantity": quantity,
-                "unit": unit or product.get("unit", "шт."),
-                "subtotal": subtotal,
-                "stock_available": stock,
-                "stock_verified": stock_verified,
-                "status": status,
-                "image": product.get("image"),
-                "url": product.get("url"),
-                "specifications": product.get("specifications", []),
-                "certificate_url": product.get("certificate_url"),
-                "analog": analog,
-            })
+    def _match_row(self, row):
+        results = self.catalog.search_products(row["query"], limit=3)
+        exact = [item for item in results if item.get("_match_type") == "exact"]
+        candidates = exact or [item for item in results if item.get("_match_score", 0) >= 2 and item.get("_match_coverage", 0) >= 0.65]
+        if not candidates or len(candidates) > 1 and candidates[0].get("_match_score", 0) == candidates[1].get("_match_score", 0):
+            return None, {**row, "status": "Нет однозначного совпадения; уточните артикул.", "candidates": [{"id": item["id"], "name": item.get("name")} for item in candidates]}
+        target = candidates[0]
+        detail = self.catalog.get_product_detail(target["id"])
+        product = detail or target
+        price = product.get("price") if detail and detail.get("price_verified") else None
+        stock = product.get("quantity") if detail and detail.get("stock_verified") else None
+        quantity = row["quantity"]
+        subtotal = round(price * quantity, 2) if price is not None and quantity is not None else None
+        analogs = self.catalog.find_analogs(detail, limit=1) if stock == 0 else []
+        status = ("Количество требует уточнения" if quantity is None else "Остаток не проверен" if stock is None
+                  else "В наличии" if stock >= quantity else "Частично в наличии" if stock > 0 else "Нет в наличии")
+        return {**row, "product_id": product["id"], "name": product["name"], "article": product.get("article", ""),
+                "unit_price": price, "subtotal": subtotal, "stock_available": stock, "stock_verified": stock is not None,
+                "price_verified": price is not None, "status": status, "unit": row["unit"] or product.get("unit"),
+                "image": product.get("image"), "url": product.get("url"),
+                "specifications": product.get("specifications", []), "certificate_url": product.get("certificate_url"),
+                "last_checked_at": detail.get("last_checked_at") if detail else None,
+                "data_quality_warnings": product.get("data_quality_warnings", []),
+                "analog": analogs[0] if analogs else None}, None
 
-        estimate_label = f"{total_estimate:,.0f} ₸" if matched_items and all(item["unit_price"] is not None for item in matched_items) else "не рассчитана полностью"
-        return {
-            "lines": lines,
-            "total_positions_found": len(matched_items),
-            "total_estimate_kzt": round(total_estimate, 2),
-            "matched_items": matched_items,
-            "unmatched_items": unmatched_items,
-            "summary_text": (
-                f"Обработано позиций: {len(matched_items)}. Предварительная сумма: {estimate_label}. "
-                f"Нераспознанных строк: {len(unmatched_items)}. Цены и остатки зависят от доступности API каталога."
-            ),
-        }
+    def parse_specification(self, content, filename="specification.pdf"):
+        try:
+            text = self.extract_text(content, filename)
+        except ServiceError:
+            raise
+        except Exception:
+            raise ServiceError("Файл повреждён или не удалось извлечь текст. Попробуйте сохранить его заново.", "unreadable_file", 422)
+        if not text.strip():
+            raise ServiceError("Читаемый текст не найден. Для фото нужны отчётливые маркировка и артикул.", "no_text", 422)
+        rows, ignored = self.rows(text)
+        if not rows:
+            raise ServiceError("В файле не найдены строки спецификации.", "no_product_rows", 422)
+        matched, unmatched, warnings = [], [], []
+        started = time.monotonic()
+        # Small batches bound the number of outstanding catalog requests.
+        for offset in range(0, len(rows), 4):
+            if time.monotonic() - started > 20:
+                unmatched.extend({**row, "status": "Лимит времени обработки; загрузите отдельным файлом."} for row in rows[offset:])
+                warnings.append("processing_budget_exceeded")
+                break
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                for hit, miss in pool.map(self._match_row, rows[offset:offset + 4]):
+                    if hit:
+                        matched.append(hit)
+                    if miss:
+                        unmatched.append(miss)
+        total = round(sum(item["subtotal"] or 0 for item in matched), 2)
+        complete = bool(matched) and not unmatched and all(item["subtotal"] is not None for item in matched)
+        return {"total_positions_found": len(matched), "total_estimate_kzt": total,
+                "estimate_complete": complete, "matched_items": matched, "unmatched_items": unmatched,
+                "ignored_lines": ignored, "warnings": warnings, "cart_updated": False,
+                "summary_text": f"Найдено позиций: {len(matched)}. Известная часть сметы: {total:,.2f} ₸. "
+                                f"Несопоставленных строк: {len(unmatched)}. " +
+                                ("Смета рассчитана по всем строкам." if complete else "Смета неполная: требуются уточнения.")}
 
 
 spec_parser = SpecificationParser()
