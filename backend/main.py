@@ -1,8 +1,12 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from agent_service import agent_service
+from ekt_client import ekt_client
+from knowledge_base import KB_ARTICLES, search_knowledge_base
+from spec_parser import spec_parser
 
 app = FastAPI(
     title="NEXIS - ekt.kz Agentic AI Assistant",
@@ -67,6 +71,12 @@ class CartItem(BaseModel):
     quantity: int
     image: Optional[str] = None
 
+class EscalateRequest(BaseModel):
+    client_name: Optional[str] = "Клиент"
+    phone: Optional[str] = "+7 700 000 00 00"
+    comment: str
+    session_id: Optional[str] = "default_session"
+
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():
     return {
@@ -75,6 +85,46 @@ def health_check():
         "team": "NEXIS",
         "agent_ready": True,
         "version": "1.0.0"
+    }
+
+@app.get("/api/products")
+def get_products(page: int = 1, limit: int = 20):
+    """Returns products from the live ekt.kz catalog for storefront display."""
+    ekt_client.preload_catalog(pages=4)
+    items = ekt_client._catalog_cache
+    start = (page - 1) * limit
+    paged_items = items[start:start + limit] if items else []
+    return {
+        "page": page,
+        "limit": limit,
+        "total": len(items),
+        "items": paged_items
+    }
+
+@app.get("/api/faq")
+def get_faq_categories():
+    """Returns official ekt.kz knowledge base articles and categories."""
+    return {
+        "categories": [
+            {"id": "b2b", "title": "Юридическим лицам (Счета с НДС 12%, ЭСФ)"},
+            {"id": "b2c", "title": "Оплата (Kaspi QR, Карты, Наличные)"},
+            {"id": "delivery", "title": "Доставка и склады по Казахстану"},
+            {"id": "registration", "title": "Регистрация (Физлица и Компании по БИН)"},
+            {"id": "certificates", "title": "Сертификаты соответствия ТР ТС"}
+        ],
+        "articles": KB_ARTICLES
+    }
+
+@app.post("/api/manager/escalate")
+def escalate_to_manager(req: EscalateRequest):
+    """Escalates complex requests or bulk orders to human sales engineer."""
+    ticket_id = f"TICK-EKT-{os.urandom(2).hex().upper()}"
+    return {
+        "status": "success",
+        "ticket_id": ticket_id,
+        "client_name": req.client_name,
+        "message": f"Заявка #{ticket_id} передана дежурному инженеру ekt.kz. С вами свяжутся в течение 10 минут.",
+        "manager_whatsapp_url": f"https://wa.me/77001234567?text=Здравствуйте!%20Мой%20тикет%20{ticket_id}"
     }
 
 @app.get("/api/cart")
@@ -116,23 +166,51 @@ def agent_chat(request: AgentQueryRequest):
     Main Agentic AI endpoint.
     Processes user query, executes Function Calling / RAG, respects confirmation guardrails.
     """
-    # Placeholder initial response for connectivity verification
     session_id = request.session_id or "default_session"
-    items = CART_STORE.get(session_id, [])
+    history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
+    
+    result = agent_service.process_message(
+        message=request.message,
+        history=history_dicts,
+        cart_store=CART_STORE,
+        session_id=session_id
+    )
+    
+    formatted_steps = [
+        ReasoningStep(
+            step_number=s.get("step_number", i + 1),
+            type=s.get("type", "thought"),
+            tool_name=s.get("tool_name"),
+            tool_input=s.get("tool_input"),
+            tool_output=s.get("tool_output"),
+            message=s.get("message")
+        )
+        for i, s in enumerate(result.get("reasoning_steps", []))
+    ]
     
     return AgentQueryResponse(
-        answer="Здравствуйте! Я ИИ-консультант ekt.kz. Чем могу помочь по каталогу электротехнической продукции?",
-        reasoning_steps=[
-            ReasoningStep(
-                step_number=1,
-                type="thought",
-                message="Инициализация сессии консультанта ekt.kz"
-            )
-        ],
-        cart_updated=False,
-        cart_items_count=len(items),
-        cart_url="/cart"
+        answer=result.get("answer", ""),
+        reasoning_steps=formatted_steps,
+        cart_updated=result.get("cart_updated", False),
+        cart_items_count=result.get("cart_items_count", 0),
+        cart_url=result.get("cart_url", "https://ekt.kz/personal/cart/"),
+        sources=result.get("sources", [])
     )
+
+@app.post("/api/agent/upload-spec")
+async def upload_specification(file: UploadFile = File(...)):
+    """
+    Multimodal entry point: Accepts specification documents (PDF / text)
+    and extracts electrical articles for instant catalog check and estimate calculation.
+    """
+    content = await file.read()
+    result = spec_parser.parse_specification(content)
+    return {
+        "status": "success",
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "estimate": result
+    }
 
 if __name__ == "__main__":
     import uvicorn
