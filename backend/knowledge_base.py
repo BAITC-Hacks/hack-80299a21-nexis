@@ -1,66 +1,56 @@
-"""Small, versioned retrieval corpus with explicit provenance."""
-import re
+"""Compatible facade over the persisted, multilingual curated knowledge base."""
+from threading import RLock
 
-VERIFIED_AT = "2026-09-23"
-TERMS_URL = "https://ekt.kz/checkout-delivery/"
+from retrieval.store import KnowledgeIndex, load_articles, request_deadline
+
+TERMS_URL = "https://ekt.kz/about/contacts/"
 CONTACTS_URL = "https://ekt.kz/about/contacts/"
+VERIFIED_AT = "2026-09-23"
+_lock = RLock()
+_index = None
 
 
-def article(identifier, category, title, keywords, content, source=TERMS_URL, status="verified_public_page", kk=""):
-    return {"id": identifier, "category": category, "title": title, "keywords": keywords,
-            "content": content, "content_kk": kk, "source_url": source,
-            "verified_at": VERIFIED_AT, "verification_status": status}
+def localize_article(item, language="ru"):
+    language = "kk" if language == "kz" else language
+    language = language if language in {"ru", "kk", "en"} else "ru"
+    translations = item.get("translations", {})
+    translated = {} if item.get("chunk_id") and item.get("language") == language else translations.get(language, {})
+    return {**item, **translated, "language": language,
+            "content_kk": translations.get("kk", {}).get("content", item.get("content_kk", "")),
+            "content_en": translations.get("en", {}).get("content", item.get("content_en", ""))}
 
 
-KB_ARTICLES = [
-    article("payment", "payment", "Оплата и счета", ["оплат", "счет", "ндс", "юрлиц", "касса", "карт", "төлем", "шот", "kaspi"],
-            "Частным покупателям доступны онлайн-оплата картой, наличные при получении и оплата в торговом зале. "
-            "Юрлица могут оплатить выставленный счёт переводом либо наличными при самовывозе. "
-            "Ставку НДС, рассрочку и условия конкретного счёта уточните у менеджера. Платёжные данные в чат не отправляйте.",
-            kk="Жеке тұлғалар карта арқылы онлайн немесе тауарды алғанда қолма-қол төлей алады. Заңды тұлғалар шот бойынша аударым жасай алады. ҚҚС пен нақты шот шарттарын менеджерден нақтылаңыз. Карта деректерін чатқа жібермеңіз."),
-    article("delivery", "delivery", "Доставка и самовывоз", ["достав", "самовывоз", "срок", "курьер", "жеткіз", "алып кет"],
-            "Согласованная доставка по Алматы указана в пределах 48 часов; возможен самовывоз. "
-            "Срок и стоимость отправки в другие города зависят от адреса, массы и объёма заказа и согласуются с менеджером. "
-            "На странице есть расходящиеся пороги бесплатной доставки, поэтому точную стоимость нужно подтвердить.",
-            kk="Алматыда келісілген жеткізу мерзімі 48 сағатқа дейін деп көрсетілген. Басқа қалаларға жеткізу құны мен мерзімін менеджермен келісу қажет. Өздігінен алып кетуге болады."),
-    article("minimum_order", "quantity", "Минимальная партия и кратность", ["миним", "партия", "кратност", "количеств", "саны", "ең аз"],
-            "Минимальная партия и кратность проверяются по полям конкретного товара в API. "
-            "Универсальное правило «всё от одной штуки» не подтверждено. Укажите артикул, чтобы проверить упаковку.",
-            source="https://ekt.kz/api/products", status="product_api_required",
-            kk="Ең аз тапсырыс саны мен қаптама еселігі нақты тауардың API деректерімен тексеріледі. Артикулын көрсетіңіз."),
-    article("certificates", "certificates", "Сертификаты конкретного товара", ["сертифик", "паспорт", "гост", "тр тс", "гарант", "сәйкест"],
-            "Укажите артикул. Ассистент выдаёт ссылку на сертификат только при её наличии в карточке API. "
-            "Отсутствие ссылки не доказывает отсутствие сертификата: запросите документ у менеджера.",
-            source="https://ekt.kz/api/products", status="product_api_required",
-            kk="Артикулын көрсетіңіз. Сертификат сілтемесі API-де бар болса ғана беріледі. Сілтеме болмаса, құжатты менеджерден сұраңыз."),
-    article("contacts", "contacts", "Связь с менеджером", ["менедж", "оператор", "человек", "контакт", "инженер", "байланыс"],
-            "Выберите город на официальной странице контактов ekt.kz. В прототипе нет соединения с CRM: обращение автоматически не отправляется.",
-            source=CONTACTS_URL, kk="ekt.kz байланыс бетінде қалаңызды таңдаңыз. Бұл прототип өтінішті CRM-ге автоматты түрде жібермейді."),
-    article("registration", "account", "Регистрация и возврат", ["регистрац", "кабинет", "бин", "возврат", "обмен", "тіркел", "қайтар"],
-            "Используйте раздел личного кабинета на ekt.kz; форму регистрации выбирают для физического или юридического лица. "
-            "Индивидуальные условия возврата и комплект документов уточните у выбранного филиала.",
-            source="https://ekt.kz/about/information/",
-            kk="ekt.kz жеке кабинет бөлімін пайдаланыңыз. Тіркелу түрін жеке немесе заңды тұлға ретінде таңдаңыз. Қайтару шарттарын филиалдан нақтылаңыз."),
-]
+KB_ARTICLES = [localize_article(item) for item in load_articles()]
 
 
-def search_knowledge_base(query, limit=3):
-    words = re.findall(r"[\w]+", str(query).lower())
-    scored = []
-    for item in KB_ARTICLES:
-        score = sum(1 for word in words if len(word) > 2 and any(
-            word.startswith(stem) or stem.startswith(word) for stem in item["keywords"]))
-        if score:
-            scored.append((score, item))
-    return [dict(item) for _, item in sorted(scored, key=lambda row: row[0], reverse=True)[:limit]]
+def get_index():
+    global _index
+    with _lock:
+        if _index is None:
+            _index = KnowledgeIndex()
+        _index.ensure()
+        return _index
+
+
+def search_knowledge_base(query, limit=3, language="ru"):
+    language = "kk" if language == "kz" else language
+    return [localize_article(item, language) for item in get_index().search(query, limit, language)]
 
 
 def source_metadata(item):
-    return {key: item[key] for key in ("id", "title", "source_url", "verified_at", "verification_status")}
+    keys = ("id", "title", "source_url", "verified_at", "verification_status", "source_id",
+            "chunk_id", "version", "updated_at", "content_hash", "language", "retrieval_mode",
+            "matched_language", "matched_chunk_id", "fallback_reason", "translation_review", "score")
+    return {key: item[key] for key in keys if key in item}
 
 
-def purchase_terms():
-    selected = [item for item in KB_ARTICLES if item["id"] in {"payment", "delivery", "minimum_order"}]
+def purchase_terms(language="ru"):
+    by_id = {item["id"]: item for item in KB_ARTICLES}
+    selected = [localize_article(by_id[key], language) for key in ("payment", "delivery", "minimum_order")]
     return {"articles": selected, "sources": [source_metadata(item) for item in selected],
             "payment": [selected[0]["content"]], "delivery": [selected[1]["content"]],
-            "minimum_order": selected[2]["content"]}
+            "minimum_order": selected[2]["content"], "answer_language": selected[0]["language"]}
+
+
+def retrieval_status():
+    return get_index().status()

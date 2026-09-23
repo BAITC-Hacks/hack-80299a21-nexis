@@ -49,7 +49,7 @@ class ToolsTests(APIHarness):
         self.agent.client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fail)))
         reply = self.chat("TEST-1001").json()
         self.assertEqual(reply["sources"][0]["quantity"], 5)
-        self.assertIn("llm_unavailable_rules_used", reply["warnings"])
+        self.assertIn("llm_unavailable_rules_used", reply["warning_codes"])
 
     def test_rate_limit_applies_even_when_invalid_session_rotates_and_has_cors(self):
         client = TestClient(create_app(self.catalog, self.carts, self.agent, request_limit=2))

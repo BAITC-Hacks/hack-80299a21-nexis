@@ -1,0 +1,434 @@
+{
+  "mode": "offline_lexical",
+  "dataset": "development_retrieval_regressions",
+  "model_calls": 0,
+  "note": "Curated-corpus retrieval only; not held-out model accuracy or production reliability.",
+  "corpus": {
+    "documents": 53,
+    "chunks": 159,
+    "embedded_chunks": 0,
+    "active_model_chunks": 0,
+    "embedding_model": "text-embedding-3-small",
+    "retrieval_mode": "lexical",
+    "fallback_reason": "embeddings_disabled",
+    "corpus_hash": "5924a1bd2f40588c2a3793de4ee43f39879596559694f4edf5416ad85e382744",
+    "embeddings_enabled": false,
+    "embedding_key_available": false,
+    "translation_review": "kk_requires_native_review"
+  },
+  "summary": {
+    "ru": {
+      "total": 10,
+      "top1_correct": 10,
+      "top1_accuracy": 1.0,
+      "recall_at_5": 1.0
+    },
+    "kk": {
+      "total": 10,
+      "top1_correct": 10,
+      "top1_accuracy": 1.0,
+      "recall_at_5": 1.0
+    },
+    "en": {
+      "total": 10,
+      "top1_correct": 10,
+      "top1_accuracy": 1.0,
+      "recall_at_5": 1.0
+    },
+    "all": {
+      "total": 30,
+      "top1_correct": 30,
+      "top1_accuracy": 1.0,
+      "recall_at_5": 1.0
+    }
+  },
+  "cases": [
+    {
+      "query": "Мне нужно вернуть купленный кабель",
+      "language": "ru",
+      "expected": "returns",
+      "retrieved": [
+        "returns",
+        "cable_power",
+        "cable_selection"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Сатып алған кабельді қалай қайтаруға болады?",
+      "language": "kk",
+      "expected": "returns",
+      "retrieved": [
+        "returns",
+        "payment",
+        "cable_power",
+        "registration",
+        "cable_selection"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "How can I return a cable?",
+      "language": "en",
+      "expected": "returns",
+      "retrieved": [
+        "returns",
+        "cable_power",
+        "cable_selection"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Как вы отправляете товары в другой город?",
+      "language": "ru",
+      "expected": "delivery",
+      "retrieved": [
+        "delivery",
+        "delivery_date",
+        "shipping_cost",
+        "warehouse_stock",
+        "spec_conflict"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Басқа қалаға тауарды қалай жеткізесіздер?",
+      "language": "kk",
+      "expected": "delivery",
+      "retrieved": [
+        "delivery",
+        "shipping_cost",
+        "delivery_date",
+        "warranty",
+        "analogs_limit"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "How do you ship items to another city?",
+      "language": "en",
+      "expected": "delivery",
+      "retrieved": [
+        "delivery",
+        "delivery_date",
+        "shipping_cost",
+        "warehouse_stock",
+        "cart_remove"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Какими способами я могу заплатить?",
+      "language": "ru",
+      "expected": "payment",
+      "retrieved": [
+        "payment",
+        "invoice",
+        "file_privacy",
+        "cart_real_checkout",
+        "outdoor_selection"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Төлемді қалай жасаймын?",
+      "language": "kk",
+      "expected": "payment",
+      "retrieved": [
+        "payment",
+        "invoice",
+        "file_privacy",
+        "cart_real_checkout"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "What payment methods can I use?",
+      "language": "en",
+      "expected": "payment",
+      "retrieved": [
+        "payment",
+        "invoice",
+        "manufacturer_documents",
+        "cart_real_checkout",
+        "file_quantity"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Какой минимальный объём заказа?",
+      "language": "ru",
+      "expected": "minimum_order",
+      "retrieved": [
+        "minimum_order",
+        "pickup_branch",
+        "payment",
+        "discount",
+        "delivery"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Тапсырыстың ең аз саны қанша?",
+      "language": "kk",
+      "expected": "minimum_order",
+      "retrieved": [
+        "minimum_order",
+        "breaker_poles",
+        "pickup_branch",
+        "breaking_capacity",
+        "payment"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Is there a minimum order quantity?",
+      "language": "en",
+      "expected": "minimum_order",
+      "retrieved": [
+        "minimum_order",
+        "cart_change",
+        "file_quantity",
+        "cart_real_checkout",
+        "certificates"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Где найти сертификат соответствия?",
+      "language": "ru",
+      "expected": "certificates",
+      "retrieved": [
+        "certificates",
+        "search_sku"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Тауардың сәйкестік сертификатын қайдан аламын?",
+      "language": "kk",
+      "expected": "certificates",
+      "retrieved": [
+        "certificates",
+        "warranty",
+        "out_of_stock",
+        "cart_confirmation",
+        "returns"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Where can I obtain a product certificate?",
+      "language": "en",
+      "expected": "certificates",
+      "retrieved": [
+        "certificates",
+        "catalog_coverage",
+        "pickup_branch",
+        "installation_help",
+        "warranty"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Где уточнить гарантию на изделие?",
+      "language": "ru",
+      "expected": "warranty",
+      "retrieved": [
+        "warranty"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Тауар кепілдігін қайдан нақтылаймын?",
+      "language": "kk",
+      "expected": "warranty",
+      "retrieved": [
+        "warranty",
+        "cart_confirmation",
+        "returns",
+        "stock_reservation",
+        "out_of_stock"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Who can confirm the product warranty?",
+      "language": "en",
+      "expected": "warranty",
+      "retrieved": [
+        "warranty",
+        "certificates",
+        "catalog_coverage",
+        "offer_expired",
+        "cart_confirmation"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Что такое УЗО?",
+      "language": "ru",
+      "expected": "rcd_definition",
+      "retrieved": [
+        "rcd_definition",
+        "rcd_overload",
+        "mcb_rcd"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "ҚАҚ деген не?",
+      "language": "kk",
+      "expected": "rcd_definition",
+      "retrieved": [
+        "rcd_definition",
+        "rcd_overload",
+        "mcb_rcd"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "What is an RCD?",
+      "language": "en",
+      "expected": "rcd_definition",
+      "retrieved": [
+        "rcd_definition",
+        "mcb_rcd"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Что представляет собой дифавтомат?",
+      "language": "ru",
+      "expected": "rcbo",
+      "retrieved": [
+        "rcbo"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Дифавтомат деген не?",
+      "language": "kk",
+      "expected": "rcbo",
+      "retrieved": [
+        "rcbo"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "What is an RCBO?",
+      "language": "en",
+      "expected": "rcbo",
+      "retrieved": [
+        "rcbo"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "В чём разница между УЗО и автоматом?",
+      "language": "ru",
+      "expected": "mcb_rcd",
+      "retrieved": [
+        "mcb_rcd",
+        "rcd_definition",
+        "rcd_overload",
+        "breaker_selection"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Автомат пен ҚАҚ айырмашылығы қандай?",
+      "language": "kk",
+      "expected": "mcb_rcd",
+      "retrieved": [
+        "mcb_rcd",
+        "breaker_curve",
+        "breaker_selection",
+        "rcd_definition",
+        "rcd_overload"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "What is the difference between an MCB and an RCD?",
+      "language": "en",
+      "expected": "mcb_rcd",
+      "retrieved": [
+        "mcb_rcd",
+        "rcd_definition",
+        "breaker_curve",
+        "minimum_order",
+        "delivery"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Объясните селективность защиты",
+      "language": "ru",
+      "expected": "selectivity",
+      "retrieved": [
+        "selectivity",
+        "rcd_definition",
+        "rcd_overload",
+        "installation_help"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Қорғаныс селективтілігі деген не?",
+      "language": "kk",
+      "expected": "selectivity",
+      "retrieved": [
+        "selectivity",
+        "rcd_definition",
+        "rcd_overload",
+        "installation_help",
+        "rcbo"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    },
+    {
+      "query": "Explain protection selectivity",
+      "language": "en",
+      "expected": "selectivity",
+      "retrieved": [
+        "selectivity",
+        "outdoor_selection",
+        "rcd_overload",
+        "breaker_selection",
+        "cable_selection"
+      ],
+      "top1": true,
+      "recall_at_5": true
+    }
+  ]
+}

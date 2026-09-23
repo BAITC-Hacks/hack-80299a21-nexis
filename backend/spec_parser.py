@@ -172,15 +172,15 @@ class SpecificationParser:
             except csv.Error:
                 raise ServiceError("В табличной строке нарушены кавычки или разделители. Проверьте файл.", "invalid_table_row", 422)
             lowered = [cell.lower() for cell in cells]
-            quantity_columns = [i for i, cell in enumerate(lowered) if re.fullmatch(r"кол[ -]?во\.?|количество|qty|quantity|саны", cell)]
+            quantity_columns = [i for i, cell in enumerate(lowered) if re.fullmatch(r"кол[ -]?во\.?|количество|qty|quantity|саны|мөлшері|count", cell)]
             if quantity_columns:
                 header = {"quantity": quantity_columns[0], "delimiter": delimiter,
-                          "article": next((i for i, cell in enumerate(lowered) if cell in {"артикул", "код", "sku", "article"}), None),
-                          "name": next((i for i, cell in enumerate(lowered) if cell in {"наименование", "название", "description", "товар"}), None),
-                          "unit": next((i for i, cell in enumerate(lowered) if re.fullmatch(r"ед\.?\s*изм\.?|единица|unit", cell)), None)}
+                          "article": next((i for i, cell in enumerate(lowered) if cell in {"артикул", "код", "sku", "article", "product code", "артикулы"}), None),
+                          "name": next((i for i, cell in enumerate(lowered) if cell in {"наименование", "название", "description", "товар", "name", "product", "атауы", "тауар"}), None),
+                          "unit": next((i for i, cell in enumerate(lowered) if re.fullmatch(r"ед\.?\s*изм\.?|единица|unit|өлшем бірлігі|бірлік", cell)), None)}
                 ignored.append(line)
                 continue
-            if re.match(r"^(?:спецификация|specification|проект|заказчик|дата|объект|подпись|страница|итого|наименование)\b", line.lower()):
+            if re.match(r"^(?:спецификация|specification|проект|заказчик|дата|объект|подпись|страница|итого|наименование|total|date|page|жоба|тапсырыс беруші|күні|барлығы)\b", line.lower()):
                 ignored.append(line)
                 continue
             quantity, unit, query = None, None, line
@@ -213,7 +213,7 @@ class SpecificationParser:
         exact = [item for item in results if item.get("_match_type") == "exact"]
         candidates = exact or [item for item in results if item.get("_match_score", 0) >= 2 and item.get("_match_coverage", 0) >= 0.65]
         if not candidates or len(candidates) > 1 and candidates[0].get("_match_score", 0) == candidates[1].get("_match_score", 0):
-            return None, {**row, "status": "Нет однозначного совпадения; уточните артикул.", "candidates": [{"id": item["id"], "name": item.get("name")} for item in candidates]}
+            return None, {**row, "status_code": "ambiguous_match", "status": "Нет однозначного совпадения; уточните артикул.", "candidates": [{"id": item["id"], "name": item.get("name")} for item in candidates]}
         target = candidates[0]
         detail = self.catalog.get_product_detail(target["id"])
         product = detail or target
@@ -224,11 +224,15 @@ class SpecificationParser:
         analogs = self.catalog.find_analogs(detail, limit=1) if stock == 0 else []
         status = ("Количество требует уточнения" if quantity is None else "Остаток не проверен" if stock is None
                   else "В наличии" if stock >= quantity else "Частично в наличии" if stock > 0 else "Нет в наличии")
+        status_code = ("quantity_unknown" if quantity is None else "stock_unknown" if stock is None
+                       else "in_stock" if stock >= quantity else "partial_stock" if stock > 0 else "out_of_stock")
         return {**row, "product_id": product["id"], "name": product["name"], "article": product.get("article", ""),
                 "unit_price": price, "subtotal": subtotal, "stock_available": stock, "stock_verified": stock is not None,
-                "price_verified": price is not None, "status": status, "unit": row["unit"] or product.get("unit"),
+                "price_verified": price is not None, "status": status, "status_code": status_code, "unit": row["unit"] or product.get("unit"),
                 "image": product.get("image"), "url": product.get("url"),
                 "specifications": product.get("specifications", []), "certificate_url": product.get("certificate_url"),
+                "min_order_quantity": product.get("min_order_quantity"), "order_multiple": product.get("order_multiple"),
+                "stores": product.get("stores", []),
                 "last_checked_at": detail.get("last_checked_at") if detail else None,
                 "data_quality_warnings": product.get("data_quality_warnings", []),
                 "analog": analogs[0] if analogs else None}, None
@@ -250,7 +254,7 @@ class SpecificationParser:
         # Small batches bound the number of outstanding catalog requests.
         for offset in range(0, len(rows), 4):
             if time.monotonic() - started > 20:
-                unmatched.extend({**row, "status": "Лимит времени обработки; загрузите отдельным файлом."} for row in rows[offset:])
+                unmatched.extend({**row, "status_code": "processing_budget_exceeded", "status": "Лимит времени обработки; загрузите отдельным файлом."} for row in rows[offset:])
                 warnings.append("processing_budget_exceeded")
                 break
             with ThreadPoolExecutor(max_workers=4) as pool:

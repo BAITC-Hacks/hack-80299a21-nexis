@@ -1,12 +1,14 @@
 """Bounded, ephemeral selection state. No messages, files or personal details."""
 import hashlib
+import copy
 import time
 from collections import OrderedDict
 from threading import RLock
 
 
 class DialogueContext:
-    FIELDS = {"product_id", "quantity", "city", "budget", "family"}
+    FIELDS = {"product_id", "quantity", "city", "budget", "family", "language", "candidate_ids",
+              "selected_ids", "selected_article", "constraints", "pending_clarification", "topic", "revision"}
 
     def __init__(self, clock=time.time, ttl=1800, capacity=1024):
         self.clock, self.ttl, self.capacity = clock, ttl, capacity
@@ -23,15 +25,18 @@ class DialogueContext:
             for expired in [key for key, (at, _) in self._entries.items() if now - at >= self.ttl]:
                 self._entries.pop(expired, None)
             item = self._entries.get(key)
-            return dict(item[1]) if item else {}
+            return copy.deepcopy(item[1]) if item else {}
 
     def update(self, session_id, **values):
         key = self._key(session_id)
         with self._lock:
             state = self.get(session_id)
-            state.update({name: value for name, value in values.items() if name in self.FIELDS})
+            state.update(copy.deepcopy({name: value for name, value in values.items() if name in self.FIELDS}))
+            for name in ("candidate_ids", "selected_ids"):
+                if name in state:
+                    state[name] = list(dict.fromkeys(pid for pid in (state[name] or []) if type(pid) is int))[:10]
             self._entries[key] = (self.clock(), state)
             self._entries.move_to_end(key)
             while len(self._entries) > self.capacity:
                 self._entries.popitem(last=False)
-            return dict(state)
+            return copy.deepcopy(state)

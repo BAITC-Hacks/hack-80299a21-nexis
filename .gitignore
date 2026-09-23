@@ -10,7 +10,9 @@ venv/
 .worktrees/
 ENV/
 *.sqlite3
+*.sqlite3-*
 *.sqlite
+*.sqlite-*
 chroma_db/
 
 # Node & Frontend

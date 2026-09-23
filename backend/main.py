@@ -5,11 +5,13 @@ import html
 import io
 import os
 import time
+import uuid
 from collections import OrderedDict, deque
 from typing import Any, Literal
 
-from fastapi import FastAPI, File, Header, Path, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, Path, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 from starlette.concurrency import run_in_threadpool
@@ -18,6 +20,9 @@ from agent_service import AgentService, agent_service
 from cart_service import CartService
 from ekt_client import ekt_client
 from knowledge_base import CONTACTS_URL, KB_ARTICLES, purchase_terms, search_knowledge_base
+import knowledge_base
+from localization import (LANGUAGES, normalize_language, tr, localize_error, localize_product,
+                          localize_cart_result, localize_estimate, localized_url, category_title)
 from settings import ServiceError, env_int
 from spec_parser import MAX_BYTES, SpecificationParser, ocr_available
 
@@ -35,11 +40,16 @@ class ChatRequest(Payload):
     message: str = Field(min_length=1, max_length=4000)
     session_id: str = Field(min_length=36, max_length=128)
     history: list[ChatMessage] = Field(default_factory=list, max_length=10)
-    language: Literal["ru", "kk"] = "ru"
+    language: Literal["ru", "kk", "en"] = "ru"
 
 
 class ChatResponse(BaseModel):
     answer: str
+    answer_language: Literal["ru", "kk", "en"] = "ru"
+    request_id: str = ""
+    clarification: dict[str, Any] | None = None
+    comparison: dict[str, Any] | None = None
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
     reasoning_steps: list[dict[str, Any]]
     sources: list[dict[str, Any]] = Field(default_factory=list)
     knowledge_sources: list[dict[str, Any]] = Field(default_factory=list)
@@ -49,6 +59,7 @@ class ChatResponse(BaseModel):
     pending_offer: dict[str, Any] | None = None
     agent_mode: str
     warnings: list[str] = Field(default_factory=list)
+    warning_codes: list[str] = Field(default_factory=list)
     cart_mode: str = "demo"
 
 
@@ -76,6 +87,21 @@ class EscalationRequest(Payload):
     comment: str = Field(default="", max_length=2000)
 
 
+def request_language(request):
+    return normalize_language(getattr(request.state, "language", None) or
+                              request.query_params.get("language") or request.headers.get("x-language"))
+
+
+def error_payload(code, language, fallback="", params=None):
+    return {"detail": localize_error(code, language, fallback, params), "code": code,
+            "params": params or {}, "answer_language": normalize_language(language)}
+
+
+def language_parameters(request: Request, language: Literal["ru", "kk", "en"] | None = Query(None),
+                        x_language: Literal["ru", "kk", "en"] | None = Header(None)):
+    request.state.language = language or x_language or "ru"
+
+
 class UploadSizeLimit:
     """Bound the incoming stream before multipart parsing can spool it to disk."""
     def __init__(self, app):
@@ -92,7 +118,8 @@ class UploadSizeLimit:
             body = event.get("body", b"")
             size += len(body)
             if size > 16 * 1024 * 1024:
-                response = JSONResponse({"detail": "Загрузка превышает 16 МиБ вместе с multipart-обёрткой.", "code": "file_too_large"},
+                language = request_language(Request(scope))
+                response = JSONResponse(error_payload("file_too_large", language),
                                         status_code=413, headers={"Cache-Control": "no-store"})
                 return await response(scope, receive, send)
             chunks.append(body)
@@ -113,7 +140,7 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
     carts = carts or (agent_service.carts if catalog is ekt_client else CartService(catalog))
     agent = agent or (agent_service if carts is agent_service.carts else AgentService(catalog, carts))
     parser = parser or SpecificationParser(catalog)
-    app = FastAPI(title="NEXIS — консультант ekt.kz", version="2.1.0")
+    app = FastAPI(title="NEXIS — консультант ekt.kz", version="3.0.0", dependencies=[Depends(language_parameters)])
     app.add_middleware(UploadSizeLimit)
     app.state.catalog, app.state.carts, app.state.agent = catalog, carts, agent
     origins = [f"http://{host}:{port}" for host in ("localhost", "127.0.0.1") for port in (3000, 5173)]
@@ -123,6 +150,7 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
 
     @app.middleware("http")
     async def safety_headers(request: Request, call_next):
+        request.state.request_id = uuid.uuid4().hex
         if request.method != "OPTIONS" and request.url.path not in {"/api/health", "/openapi.json", "/docs", "/redoc"}:
             identity = request.headers.get("x-session-id") or request.query_params.get("session_id")
             address = request.client.host if request.client else "unknown"
@@ -137,7 +165,7 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
                 while bucket and now - bucket[0] > 60:
                     bucket.popleft()
                 if len(bucket) >= cap:
-                    return JSONResponse({"detail": "Слишком много запросов. Повторите через минуту.", "code": "rate_limited"},
+                    return JSONResponse(error_payload("rate_limited", request_language(request)),
                                         status_code=429, headers={"Retry-After": "60", "Cache-Control": "no-store",
                                                                  "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"})
             for key in keys:
@@ -149,11 +177,20 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Request-Id"] = request.state.request_id
+        response.headers["Content-Language"] = request_language(request)
         return response
 
     @app.exception_handler(ServiceError)
     async def service_error(request, error):
-        return JSONResponse({"detail": error.message, "code": error.code}, status_code=error.status)
+        return JSONResponse(error_payload(error.code, request_language(request), error.message, error.params), status_code=error.status)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, error):
+        body = error.body
+        if request.url.path == "/api/agent/chat" and isinstance(body, dict) and body.get("language") in LANGUAGES:
+            request.state.language = body["language"]
+        return JSONResponse(error_payload("validation_error", request_language(request)), status_code=422)
 
     def session(query, header):
         if query and header and query != header:
@@ -163,34 +200,38 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
         return token
 
     @app.post("/api/session")
-    def new_session():
-        return carts.new_session()
+    def new_session(request: Request):
+        return {**carts.new_session(), "answer_language": request_language(request)}
 
     @app.get("/api/health")
     def health():
-        return {"status": "online", "service": "NEXIS ekt.kz backend", "team": "NEXIS", "version": "2.1.0",
+        return {"status": "online", "service": "NEXIS ekt.kz backend", "team": "NEXIS", "version": "3.0.0",
                 "agent_ready": bool(catalog.auth), "agent_mode": "tools" if agent.client else "rules",
                 "catalog_configured": bool(catalog.auth), "catalog": catalog.coverage(),
                 "ocr_available": ocr_available(), "cart_persistence": "sqlite",
-                "partner_cart_connected": False, "crm_connected": False}
+                "partner_cart_connected": False, "crm_connected": False, "languages": list(LANGUAGES),
+                "retrieval": knowledge_base.retrieval_status()}
 
     @app.get("/api/products")
-    def products(page: int = Query(1, ge=1, le=50), limit: int = Query(20, ge=1, le=100)):
+    def products(request: Request, page: int = Query(1, ge=1, le=50), limit: int = Query(20, ge=1, le=100)):
         result = catalog.get_page(page)
         if result is None:
             raise ServiceError("Каталог временно недоступен.", "catalog_unavailable")
-        return {"page": page, "limit": limit, "items": result["items"][:limit],
+        language = request_language(request)
+        return {"page": page, "limit": limit, "items": [localize_product(item, language) for item in result["items"][:limit]],
                 "total_loaded": catalog.coverage()["loaded_products"],
                 "has_more": result["count"] >= result["per_page"] if result["per_page"] else False,
-                "data_source": "ekt.kz", "last_checked_at": result["last_checked_at"]}
+                "data_source": "ekt.kz", "last_checked_at": result["last_checked_at"], "answer_language": language}
 
     @app.get("/api/products/search")
-    def search(q: str = Query(..., min_length=1, max_length=500), limit: int = Query(5, ge=1, le=10)):
+    def search(request: Request, q: str = Query(..., min_length=1, max_length=500), limit: int = Query(5, ge=1, le=10)):
         hits = catalog.search_products(q, limit)
         items = [detail for hit in hits if (detail := catalog.get_product_detail(hit["id"]))]
         if not items and catalog.last_error:
             raise ServiceError("Не удалось проверить каталог.", "catalog_unavailable")
-        return {"items": items, "coverage": catalog.coverage(), "data_source": "ekt.kz"}
+        language = request_language(request)
+        return {"items": [localize_product(item, language) for item in items], "coverage": catalog.coverage(),
+                "data_source": "ekt.kz", "answer_language": language}
 
     def product_detail(product_id, refresh=False):
         detail = catalog.get_product_detail(product_id, force_refresh=refresh)
@@ -201,66 +242,81 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
         return detail
 
     @app.get("/api/products/{product_id}")
-    def product(product_id: int = Path(ge=1), refresh: bool = False):
-        return product_detail(product_id, refresh)
+    def product(request: Request, product_id: int = Path(ge=1), refresh: bool = False):
+        return localize_product(product_detail(product_id, refresh), request_language(request))
 
     @app.get("/api/products/{product_id}/analogs")
-    def analogs(product_id: int = Path(ge=1)):
+    def analogs(request: Request, product_id: int = Path(ge=1)):
         detail = product_detail(product_id, True)
         items = catalog.find_analogs(detail)
-        return {"items": items, "coverage": catalog.coverage(),
-                "message": "Проверены характеристики и остатки." if items else "Подтверждённый аналог в доступной выборке не найден; обратитесь к менеджеру."}
+        language = request_language(request)
+        return {"items": [localize_product(item, language) for item in items], "coverage": catalog.coverage(),
+                "message": tr("analogs_found" if items else "analogs_missing", language), "answer_language": language}
 
     @app.get("/api/faq")
-    def faq(q: str | None = Query(None, max_length=500)):
-        articles = search_knowledge_base(q, 6) if q else KB_ARTICLES
-        return {"categories": [{"id": key, "title": key} for key in sorted({item["category"] for item in KB_ARTICLES})],
-                "articles": articles}
+    def faq(request: Request, q: str | None = Query(None, max_length=500)):
+        language = request_language(request)
+        articles = search_knowledge_base(q, 6, language=language) if q else [knowledge_base.localize_article(item, language) for item in KB_ARTICLES]
+        return {"categories": [{"id": key, "title": category_title(key, language)} for key in sorted({item["category"] for item in KB_ARTICLES})],
+                "articles": articles, "answer_language": language}
 
     @app.get("/api/purchase-terms")
-    def terms():
-        return purchase_terms()
+    def terms(request: Request):
+        return {**purchase_terms(language=request_language(request)), "answer_language": request_language(request)}
 
     @app.post("/api/manager/escalate")
-    def escalate(request: EscalationRequest):
+    def escalate(body: EscalationRequest, request: Request):
         return {"status": "manual_handoff_required", "contacts_url": CONTACTS_URL,
-                "message": "Автоматическая передача в CRM не подключена. Выберите филиал на странице контактов; сообщение не отправлено."}
+                "message": tr("manual_handoff", request_language(request)), "answer_language": request_language(request)}
 
     @app.get("/api/integrations")
-    def integrations():
+    def integrations(request: Request):
         return {"catalog": {"configured": bool(catalog.auth), "mode": "read_only"},
                 "cart": {"mode": "demo", "persisted": True, "read_link": True, "partner_connected": False},
                 "crm": {"connected": False, "contacts_url": CONTACTS_URL},
-                "required_from_partner": ["Официальный контракт корзины и привязки сессии покупателя", "Тестовый доступ и правила идемпотентности", "Контракт CRM для реальной передачи заявки"]}
+                "required_from_partner": [tr(key, request_language(request)) for key in ("partner_cart_contract", "partner_test_access", "partner_crm_contract")],
+                "answer_language": request_language(request)}
+
+    def select_from_card(sid, product_id, quantity, language):
+        # Selection is context only; this never authorizes a mutation or a chat offer.
+        previous = agent.context.get(sid)
+        agent.context.update(sid, product_id=product_id, selected_ids=[product_id], candidate_ids=[product_id],
+                             quantity=quantity, language=language, constraints={}, pending_clarification=None,
+                             family=None, topic="product", city=None, budget=None, revision=previous.get("revision", 0) + 1)
 
     @app.get("/api/cart")
-    def get_cart(session_id: str | None = None, x_session_id: str | None = Header(None)):
-        return carts.snapshot(session(session_id, x_session_id))
+    def get_cart(request: Request, session_id: str | None = None, x_session_id: str | None = Header(None)):
+        return localize_cart_result(carts.snapshot(session(session_id, x_session_id)), request_language(request))
 
     @app.post("/api/cart/offer")
-    def offer(body: CartOfferRequest, session_id: str | None = None, x_session_id: str | None = Header(None)):
-        return carts.prepare(session(session_id, x_session_id), body.product_id, body.quantity)
+    def offer(body: CartOfferRequest, request: Request, session_id: str | None = None, x_session_id: str | None = Header(None)):
+        sid, language = session(session_id, x_session_id), request_language(request)
+        result = carts.prepare(sid, body.product_id, body.quantity)
+        select_from_card(sid, body.product_id, body.quantity, language)
+        return localize_cart_result(result, language)
 
     @app.post("/api/cart/add")
-    def add(body: CartItem, session_id: str | None = None, x_session_id: str | None = Header(None)):
+    def add(body: CartItem, request: Request, session_id: str | None = None, x_session_id: str | None = Header(None)):
         result = carts.confirm(session(session_id, x_session_id), body.product_id, body.quantity, body.offer_token, body.confirmed)
         result.pop("product", None)
-        return result
+        return localize_cart_result(result, request_language(request))
 
     @app.post("/api/cart/change-offer")
-    def change_offer(body: CartChangeRequest, session_id: str | None = None, x_session_id: str | None = Header(None)):
-        return carts.prepare_change(session(session_id, x_session_id), body.product_id, body.quantity)
+    def change_offer(body: CartChangeRequest, request: Request, session_id: str | None = None, x_session_id: str | None = Header(None)):
+        return localize_cart_result(carts.prepare_change(session(session_id, x_session_id), body.product_id, body.quantity), request_language(request))
 
     @app.post("/api/cart/change")
-    def change(body: CartChange, session_id: str | None = None, x_session_id: str | None = Header(None)):
-        return carts.confirm_change(session(session_id, x_session_id), body.product_id, body.quantity, body.offer_token, body.confirmed)
+    def change(body: CartChange, request: Request, session_id: str | None = None, x_session_id: str | None = Header(None)):
+        return localize_cart_result(carts.confirm_change(session(session_id, x_session_id), body.product_id, body.quantity, body.offer_token, body.confirmed), request_language(request))
 
     @app.get("/api/cart/export")
-    def export(session_id: str | None = None, x_session_id: str | None = Header(None)):
+    def export(request: Request, session_id: str | None = None, x_session_id: str | None = Header(None)):
         snapshot = carts.snapshot(session(session_id, x_session_id))
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Артикул", "Наименование", "Количество", "Цена KZT", "Сумма KZT"])
+        language = request_language(request)
+        writer.writerow([tr("article", language), tr("name", language), tr("quantity", language),
+                         tr("price", language) + " KZT", tr("sum", language) + " KZT"])
         def cell(value):
             text = str(value)
             return "'" + text if text[:1] in "=+-@\t\r" else text
@@ -271,40 +327,52 @@ def create_app(catalog=None, carts=None, agent=None, parser=None, request_limit=
                         headers={"Content-Disposition": 'attachment; filename="nexis-cart.csv"'})
 
     @app.get("/cart/{read_token}", response_class=HTMLResponse)
-    def view_cart(read_token: str):
+    def view_cart(read_token: str, request: Request):
         cart = carts.read_link(read_token)
+        language = request_language(request)
+        def label(key):
+            return html.escape(tr(key, language))
         rows = "".join(f"<tr><td>{html.escape(item['article'])}</td><td>{html.escape(item['name'])}</td>"
                        f"<td>{item['quantity']}</td><td>{item['price']:,.2f} ₸</td></tr>" for item in cart["items"])
-        page = ('<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-                '<title>Демонстрационная корзина NEXIS</title><style>body{font:16px system-ui;max-width:900px;margin:4vw auto;padding:16px}'
+        page = (f'<!doctype html><html lang="{language}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+                f'<title>{label("cart_title")}</title><style>body{{font:16px system-ui;max-width:900px;margin:4vw auto;padding:16px}}'
                 'table{width:100%;border-collapse:collapse}td,th{padding:12px;text-align:left;border-bottom:1px solid #ddd}'
-                '.table{overflow:auto}p{line-height:1.6}</style><h1>Демонстрационная корзина</h1>'
-                '<p>Текущее состояние сохранённой корзины. Товары не зарезервированы; заказ на ekt.kz не оформлен.</p>'
-                '<div class="table"><table><thead><tr><th>Артикул</th><th>Товар</th><th>Количество</th><th>Цена</th></tr></thead><tbody>'
-                + (rows or '<tr><td colspan="4">Корзина пуста</td></tr>') +
-                f'</tbody></table></div><p><strong>Итого: {cart["total_sum"]:,.2f} ₸</strong></p>'
-                '<p>Передача этой корзины на сайт партнёра пока не подключена.</p>'
-                '<a href="https://ekt.kz/personal/cart/" rel="noreferrer">Открыть отдельную корзину на ekt.kz</a></html>')
+                '.table{overflow:auto}p{line-height:1.6}</style>'
+                f'<h1>{label("cart_title")}</h1><p>{label("cart_notice")}</p>'
+                f'<div class="table"><table><thead><tr><th>{label("article")}</th><th>{label("name")}</th><th>{label("quantity")}</th><th>{label("price")}</th></tr></thead><tbody>'
+                + (rows or f'<tr><td colspan="4">{label("cart_empty")}</td></tr>') +
+                f'</tbody></table></div><p><strong>{label("total")}: {cart["total_sum"]:,.2f} ₸</strong></p>'
+                f'<p>{label("partner_cart_notice")}</p>'
+                f'<a href="https://ekt.kz/personal/cart/" rel="noreferrer">{label("partner_cart_open")}</a></html>')
         return HTMLResponse(page, headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"})
 
     @app.post("/api/agent/chat", response_model=ChatResponse)
-    def chat(body: ChatRequest, x_session_id: str | None = Header(None)):
+    def chat(body: ChatRequest, request: Request, x_session_id: str | None = Header(None)):
+        request.state.language = body.language
         sid = session(body.session_id, x_session_id)
-        return agent.process_message(body.message, [item.model_dump() for item in body.history], sid, body.language)
+        result = agent.process_message(body.message, [item.model_dump() for item in body.history], sid, body.language,
+                                       request_id=request.state.request_id)
+        result.update(answer_language=body.language, request_id=request.state.request_id)
+        result["sources"] = [localize_product(item, body.language) for item in result.get("sources", [])]
+        result["cart_url"] = localized_url(result.get("cart_url"), body.language)
+        return result
 
     @app.post("/api/agent/upload-spec")
-    async def upload(file: UploadFile = File(...)):
+    async def upload(request: Request, file: UploadFile = File(...)):
         try:
             content = await file.read(MAX_BYTES + 1)
             filename = os.path.basename(file.filename or "unknown")[:200]
             estimate = await run_in_threadpool(parser.parse_specification, content, filename)
-            return {"status": "success", "filename": filename, "content_type": file.content_type, "estimate": estimate}
+            language = request_language(request)
+            return {"status": "success", "filename": filename, "content_type": file.content_type,
+                    "estimate": localize_estimate(estimate, language), "answer_language": language}
         finally:
             await file.close()
 
     # CORS wraps early error/rate-limit responses too.
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False,
-                       allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "X-Session-Id"])
+                       allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "X-Session-Id", "X-Language"],
+                       expose_headers=["X-Request-Id", "Content-Language"])
     return app
 
 

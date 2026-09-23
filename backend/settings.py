@@ -18,6 +18,7 @@ OFFER_TTL = env_int("OFFER_TTL_SECONDS", 600, 30, 3600)
 
 
 class ServiceError(Exception):
-    def __init__(self, message: str, code: str = "unavailable", status: int = 503):
+    def __init__(self, message: str, code: str = "unavailable", status: int = 503, params: dict | None = None):
         super().__init__(message)
         self.message, self.code, self.status = message, code, status
+        self.params = params or {}

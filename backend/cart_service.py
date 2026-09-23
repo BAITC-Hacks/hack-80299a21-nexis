@@ -117,11 +117,11 @@ class CartService:
     def _check_stock(detail, quantity, existing_quantity):
         remaining = max(0, math.floor(detail["quantity"]) - existing_quantity)
         if quantity > remaining:
-            raise ServiceError(f"Доступно для добавления не более {remaining} шт.", "insufficient_stock", 409)
+            raise ServiceError(f"Доступно для добавления не более {remaining} шт.", "insufficient_stock", 409, {"remaining": remaining})
         minimum = detail.get("min_order_quantity") or 1
         multiple = detail.get("order_multiple") or 1
         if quantity < minimum or (quantity / multiple) % 1 > 1e-8:
-            raise ServiceError(f"Минимальная партия: {minimum}; кратность: {multiple}.", "packaging_mismatch", 409)
+            raise ServiceError(f"Минимальная партия: {minimum}; кратность: {multiple}.", "packaging_mismatch", 409, {"minimum": minimum, "multiple": multiple})
 
     def prepare(self, session_id, product_id, quantity, channel="button"):
         key = self.session(session_id)

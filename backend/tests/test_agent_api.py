@@ -54,7 +54,8 @@ class AgentAPITests(APIHarness):
     def test_terms_have_sources_without_unverified_tax_claim(self):
         response = self.chat("Условия оплаты доставки и минимальная партия").json()
         self.assertTrue(response["knowledge_sources"])
-        self.assertIn("https://ekt.kz/checkout-delivery/", response["answer"])
+        # Payment and delivery terms were verified in the official contacts-page footer.
+        self.assertIn("https://ekt.kz/about/contacts/", response["answer"])
         self.assertNotIn("НДС 12%", response["answer"])
         terms = self.client.get("/api/purchase-terms").json()
         self.assertIn("конкретного товара", terms["minimum_order"])

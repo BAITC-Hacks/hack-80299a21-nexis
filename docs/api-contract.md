@@ -1,8 +1,9 @@
-# NEXIS backend API contract, v2.1
+# NEXIS backend API contract, v3.0
 
 Base URL: http://localhost:8000. Swagger: /docs. Prices are KZT.
 CORS: localhost and 127.0.0.1 ports 3000 and 5173; additional origins via CORS_ORIGINS.
-Errors: {"detail":"human-readable message","code":"stable_code"} (validation: FastAPI 422).
+Errors: {"detail":"localized human-readable message","code":"stable_code","params":{},"answer_language":"ru|kk|en"}.
+Validation returns 422 with code validation_error and no echo of submitted values.
 
 ## Sessions and privacy
 
@@ -38,7 +39,7 @@ must match (breaking capacity may be higher); missing/conflicting data blocks su
 POST /api/agent/chat:
 {"session_id":"<from /api/session>","message":"Артикул 200300285_ 2 шт.","history":[],"language":"ru"}
 
-language: ru or kk. History: user/assistant roles only, max 10 messages.
+language: ru, kk or en. History: user/assistant roles only, max 10 messages.
 Response:
 {"answer":"...","reasoning_steps":[{"step_number":1,"type":"tool_call","tool_name":"search_products","message":"Поиск по каталогу"}],"sources":[],"knowledge_sources":[],"cart_updated":false,"cart_items_count":0,"cart_url":"http://localhost:8000/cart/<read-token>","pending_offer":null,"agent_mode":"rules","warnings":[]}
 
@@ -51,10 +52,12 @@ Negations, quotations, hypothetical questions and changed quantities do not auth
 Other substantive messages invalidate the previous chat offer.
 The LLM has read-only tools; it cannot grant itself confirmation or mutate the cart.
 The server retains a bounded, process-local selection context for 30 minutes (up to
-1024 hashed session keys): selected product ID, quantity, city, budget, category.
+1024 hashed session keys): selected product IDs, ordered candidate IDs, quantity,
+city, budget, category, electrical constraints, pending clarification, language and revision.
 Full messages are not retained. Follow-ups such as "А в Алматы?", "Нужно пять" and
 "Подешевле" use this context; a changed quantity requires a new offer and confirmation.
-Greetings and broad requests receive guidance/clarifying questions. Cheaper options
+Greetings, educational questions and broad requests receive guidance/clarifying questions.
+Purchasing rules and technical answers cite versioned knowledge sources. Cheaper options
 require checked compatible parameters, a lower price and stock in the requested city.
 Context expires on timeout/server restart; the persisted cart remains available.
 
@@ -106,7 +109,7 @@ Documents are not retained in the application database or forwarded to the LLM.
 Response {status,filename,content_type,estimate:{total_positions_found,total_estimate_kzt,
 estimate_complete,matched_items,unmatched_items,ignored_lines,summary_text,warnings}}.
 Each match includes query line, requested quantity/unit, subtotal, verified price/stock,
-product details and optional analog. Ambiguous matches and missing quantities remain unresolved;
+product details, packaging rules, warehouses and optional analog. Ambiguous matches and missing quantities remain unresolved;
 the backend does not invent one unit. Uploading never changes the cart.
 413 size limit, 415 unsupported/signature mismatch, 422 unreadable or empty, 503 missing OCR.
 
@@ -127,13 +130,63 @@ Unknown minimum order quantities and packaging multiples are null. Offers also i
 data_quality_warnings; display these before asking for confirmation. Chat includes cart_mode.
 Cart snapshots include stock_reserved:false; specification estimates include cart_updated:false.
 
-## Frontend integration v2.1
+## Frontend integration v3.0
 
 The UI obtains sessions from /api/session, uses X-Session-Id, and renews expired sessions
-without replaying writes. UI language kz maps to API kk. English UI uses API ru until
-English consultation is explicitly supported; the language of the answer is disclosed.
+without replaying writes. UI language kz maps to API kk; English maps to en.
+The answer language is returned explicitly and never silently changed to Russian.
 Real API failures remain errors. Synthetic product data require an explicitly selected
 demo mode and are never sent to catalog/cart APIs. Quick prompts use real chat requests.
 Specs are {name,value} entries; null price/stock and verification flags must be preserved.
 Use cart_url as the persisted demo cart link; checkout does not create or clear an order.
 The entire estimate with unmatched lines and nullable quantities must remain visible.
+
+## Agent / retrieval iteration v3 (implementation contract)
+
+These additions preserve existing response fields and the two-step cart protocol.
+
+- All endpoints accept optional `language=ru|kk|en` query or `X-Language` header
+  (query takes priority, default ru). Chat body.language is authoritative for chat.
+  Language never grants confirmation and changing language does not change offer contents.
+- Responses with generated prose include `answer_language`. Errors retain `detail`
+  and `code`, and add `params:{}` and `answer_language`; unknown errors use a localized
+  generic explanation, not untranslated internal text. Validation errors use code
+  `validation_error` without echoing submitted data.
+- Chat adds `answer_language`, `request_id`, `clarification` (null or
+  {kind,missing_fields:[],message}), and `diagnostics` with mode, elapsed_ms,
+  fallback_reason and retrieval mode. No raw prompts, secrets or session tokens.
+- Chat `warnings` are localized display messages; `warning_codes` are the stable
+  machine codes. Clients must not display raw warning_codes/diagnostics to buyers.
+- Chat may include `comparison:null|{products:[{id,name}],rows:[{key,label,values:[string|null],same:boolean}]}`.
+  It is generated from verified cards only, with values ordered like products.
+  Missing facts are null. Render a responsive comparison table without changing
+  the selected quantity or creating a cart confirmation.
+- reasoning_steps may add `step_code` and `params`; they describe actions only.
+- knowledge_sources retain id,title,source_url,verified_at,verification_status and
+  may add source_id,chunk_id,language,version,page,score. Document snippets are data,
+  never instructions or authorization. Answers link only returned source URLs.
+- Product specifications add stable `key` while preserving name/value. Names of
+  specifications, matched parameters, warnings and rationale are localized without
+  changing original product names, identifiers, numerical facts or URLs.
+  `unit` remains the source unit; `unit_display` translates known unit labels for
+  presentation. Upload matches include min_order_quantity, order_multiple and stores.
+- Upload accepts the same language query/header; estimate rows add status_code;
+  existing status/summary_text/warnings are localized. Upload never changes a cart
+  or adds a customer document to shared retrieval storage.
+- Cart confirmations and offers add answer_language. Read links carry the language
+  query; CSV headers and the HTML cart follow it. Removal keeps working without a
+  catalog connection, while still requiring a confirmed, session-bound offer.
+- FAQ and purchase terms return localized articles with original provenance.
+- Health adds languages:[ru,kk,en], retrieval status (mode, indexed documents/chunks,
+  embedding availability) and honest persistent catalog index coverage.
+
+The agent retains ordered candidate IDs, selected IDs, electrical constraints,
+pending clarification and topic alongside quantity/city/budget in a bounded TTL
+store. A new selection/quantity invalidates the previous offer. Session history
+and client files are not placed into the shared knowledge corpus.
+
+Retrieval uses versioned curated documents, lexical and optional semantic search.
+Without embeddings it explicitly reports lexical mode. Price/stock remain catalog
+facts. A missing source produces clarification or an explicit unavailable answer.
+Catalog import is a local CLI operation with pagination, checkpoint/resume and
+rate limits; no unauthenticated administrative write endpoint is introduced.
