@@ -1,0 +1,137 @@
+.chip-mascot {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  isolation: isolate;
+  vertical-align: middle;
+  user-select: none;
+  transform-origin: center;
+  transition: transform 280ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.chip-mascot::before {
+  position: absolute;
+  z-index: -1;
+  inset: 22% 20%;
+  border-radius: 26%;
+  background: rgb(34 211 238 / 10%);
+  box-shadow: 0 0 14px 4px rgb(34 211 238 / 35%), 0 0 30px 6px rgb(14 165 233 / 20%);
+  content: '';
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.chip-mascot__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.chip-mascot__body,
+.chip-mascot__eyes,
+.chip-mascot__radar,
+.chip-mascot__bolt,
+.chip-mascot__spark {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.chip-mascot--idle .chip-mascot__body {
+  animation: chipai-breathe 4s ease-in-out infinite;
+}
+
+.chip-mascot--idle .chip-mascot__eyes {
+  animation: chipai-blink 4s ease-in-out infinite;
+}
+
+.chip-mascot--thinking::before {
+  animation: chipai-halo 1.8s ease-in-out infinite;
+}
+
+.chip-mascot__radar {
+  animation: chipai-radar 1.4s linear infinite;
+}
+
+.chip-mascot__radar + .chip-mascot__radar {
+  animation-delay: -350ms;
+}
+
+.chip-mascot__face {
+  animation: chipai-face-in 220ms ease-out both;
+}
+
+.chip-mascot--success .chip-mascot__body {
+  animation: chipai-celebrate 650ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.chip-mascot--success .chip-mascot__bolt {
+  animation: chipai-flash 650ms ease-out;
+}
+
+.chip-mascot__spark {
+  animation: chipai-spark 750ms ease-out both;
+}
+
+@media (hover: hover) {
+  .chip-mascot:hover,
+  button:hover .chip-mascot {
+    transform: rotate(3deg) scale(1.05);
+  }
+}
+
+@keyframes chipai-breathe {
+  0%, 100% { transform: translateY(1px); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes chipai-blink {
+  0%, 43%, 49%, 100% { transform: scaleY(1); }
+  46% { transform: scaleY(.08); }
+}
+
+@keyframes chipai-halo {
+  0%, 100% { opacity: .35; transform: scale(.95); }
+  50% { opacity: .95; transform: scale(1.12); }
+}
+
+@keyframes chipai-radar {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes chipai-face-in {
+  from { opacity: .2; }
+  to { opacity: 1; }
+}
+
+@keyframes chipai-celebrate {
+  0%, 100% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-4px) scale(1.04); }
+  65% { transform: translateY(1px) scale(.99); }
+}
+
+@keyframes chipai-flash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  20% { opacity: .45; transform: scale(.94); }
+  45% { opacity: 1; transform: scale(1.18); }
+}
+
+@keyframes chipai-spark {
+  0% { opacity: 0; transform: scale(.55); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-mascot,
+  .chip-mascot::before,
+  .chip-mascot * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .chip-mascot--thinking::before { opacity: .55; }
+  .chip-mascot__spark { opacity: 0; }
+  .chip-mascot:hover,
+  button:hover .chip-mascot { transform: none; }
+}

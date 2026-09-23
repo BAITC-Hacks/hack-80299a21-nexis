@@ -1,4 +1,9 @@
-import { mountChipMascot } from './mountChipMascot.tsx';
+import { mountChipMascot } from './mountChipMascot';
+import type { ChipMascotState } from './components/ChipMascot';
+import { copy } from './chat/i18n';
+import { element as $, escapeHtml, safeExternalUrl } from './chat/dom';
+import { renderReasoningTimeline } from './chat/reasoning';
+import type { AssistantReply, Cart, CartItem, CartResponse, ChatResponse, HistoryMessage, Language, Product, ProductSource, ReasoningStep, Scenario } from './chat/types';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(new RegExp('/+$'), '');
 const CHECKOUT_FALLBACK = 'https://ekt.kz/personal/cart/';
@@ -6,186 +11,42 @@ const SESSION_KEY = 'ekt-widget-session';
 const DEMO_CART_KEY = 'ekt-widget-demo-cart';
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const LANGUAGE_KEY = 'ekt-widget-language';
-const copy = {
-  ru: {
-    cart: 'Корзина', cartAria: 'Открыть корзину, товаров: ', emptyCart: 'Корзина пока пуста', cartTitle: 'Корзина', closeCart: 'Закрыть корзину', unitsShort: 'ед.',
-    itemCount: (count) => count + ' ' + (count === 1 ? 'товар' : count < 5 ? 'товара' : 'товаров'),
-    quantity: 'Количество', remove: 'Удалить товар', stockLabel: 'Остаток', total: 'Итого',
-    checkout: 'Оформить заказ', demoOrder: 'Демонстрационный заказ, без оплаты', orderSuccess: 'Тестовый заказ успешно создан.',
-    emptyTitle: 'В корзине пока пусто', emptyCopy: 'Добавьте подходящий товар из чата — здесь появятся позиции и итоговая сумма.',
-    freeShippingNeeded: (amount) => 'До бесплатной доставки по РК осталось ' + amount + ' ₸ (бесплатно от 50 000 ₸)',
-    freeShippingReached: 'Бесплатная доставка по РК доступна для этой корзины.',
-    shippingProgress: 'Прогресс бесплатной доставки',
-    cartLimit: 'На складе доступно только', cartLimitSuffix: 'ед.', cartFailure: 'Не удалось обновить корзину. Попробуйте ещё раз.',
-    certificateDownloaded: 'Скачан демонстрационный PDF, не официальный сертификат.',
-    inStock: 'в наличии', stockEmpty: 'Нет в наличии', article: 'Артикул', quantityLabel: 'Количество',
-    quantityDown: 'Уменьшить количество', quantityUp: 'Увеличить количество', analogTitle: 'Подходящий аналог',
-    demoStock: 'в демо-остатке', unknownPrice: 'Цена уточняется', unknownSpecs: 'Характеристики уточняются',
-    cableName: 'Кабель ВВГнг(А)-LS 3×2,5', legrandName: 'Legrand DRX250, 3P, 160 A', analogName: 'Автоматический выключатель CHINT eB, 3P, 160 A',
-    analogRationale: 'Совпадают параметры 3P, 160 A и 4,5 кА; в демонстрационном сценарии совместимость подтверждена по ГОСТ.',
-    cableSpecs: ['3 жилы', '2,5 мм²', 'нг(А)-LS'], analogSpecs: ['3P', '160 A', '4,5 кА'], sourceSpecs: ['3P', '160 A', '4,5 кА'],
-    meterUnit: 'м', pieceUnit: 'шт.', stockUnavailable: 'Доступного остатка для этой позиции больше нет.',
-    stockMax: (count, unit) => 'Можно добавить не более ' + count + ' ' + unit + '.', serverCartError: 'Не удалось обновить корзину на сервере.',
-    demoResponse: 'Демо-ответ · синтетические данные',
-    fallbackAnswer: 'В демо-каталоге не нашлось точного совпадения. Уточните артикул или параметры — проверю позицию и совместимость.',
-    fallbackSteps: ['Разбираю параметры запроса', 'Ищу совпадения в каталоге', 'Проверяю наличие доступных позиций'],
-    typeLabels: { search: 'поиск', catalog: 'каталог', stock: 'остаток', analogs: 'аналог', delivery: 'доставка', check: 'проверка', intent: 'запрос' },
-    assistant: 'ChipAI — ekt.kz консультант', launcher: 'ИИ-консультант', online: 'Онлайн', role: 'консультант ekt.kz',
-    catalogHelp: 'Помощь по каталогу', replyTime: 'Обычно отвечаем за минуту',
-    welcomeKicker: 'Рады помочь', welcome: 'Здравствуйте! Я помогу найти товар, проверить наличие, подобрать аналог и посмотреть документы.',
-    welcomeHint: 'Напишите артикул или опишите задачу своими словами.',
-    prompts: ['Кабель ВВГнг 3х2.5', 'Аналог Legrand 160A', 'Условия доставки и опт'],
-    promptQueries: ['Кабель ВВГнг 3х2.5', 'Аналог Legrand 160A', 'Условия доставки и опт'],
-    placeholder: 'Напишите, что нужно найти…', footer: 'Ассистент ekt.kz', demo: 'Демо-данные каталога',
-    add: '✓ Добавить в корзину', noStock: 'Нет в наличии', adding: 'Добавляем…',
-    languageToggle: 'Переключить язык: RU, KZ или EN',
-    success: '✓ Товар добавлен в корзину!', cartAdded: (count) => '✓ Добавлено: ' + count, checkoutLink: 'Перейти к оформлению заказа',
-    reasoning: 'Ход рассуждения модели', stepCount: (count) => count + ' ' + (count === 1 ? 'шаг' : count < 5 ? 'шага' : 'шагов'), certificateLink: '📄 Сертификат соответствия ГОСТ (PDF)',
-    cableAnswer: 'Нашёл кабель ВВГнг 3×2,5: он есть в наличии. Проверьте метраж и подтвердите добавление кнопкой в карточке.',
-    cableSteps: ['Поиск кабеля ВВГнг 3×2,5 по каталогу', 'Проверка остатка: 1250 м в наличии', 'Проверка характеристик и сертификата ГОСТ'],
-    analogAnswer: 'Позиция Legrand отсутствует на складе, но мы подобрали 100% совместимый аналог по ГОСТ.',
-    analogSteps: ['Поиск Legrand DRX250 160A', 'Остаток Legrand: 0', 'Поиск сертифицированного аналога: 3P, 160A, 4.5 кА', 'Найден CHINT eB с совпадающими параметрами'],
-    deliveryTitle: 'Доставка и оптовые условия', deliveryFree: 'Бесплатная доставка по РК',
-    deliveryPickup: 'Самовывоз', deliveryPickupText: 'Астана и Алматы', deliveryPayment: 'Оплата для юридических лиц',
-    deliveryPaymentText: 'Безналичный расчёт', deliverySupport: 'Единая справочная линия',
-    deliveryAnswer: 'Собрал основные условия покупки. Точную доступность и сроки подтвердит менеджер при оформлении.',
-    deliverySteps: ['Проверка правил доставки по РК', 'Проверка оптовых и безналичных условий', 'Готовлю краткую сводку для клиента'],
-    orderGuard: 'Корзина изменяется только после нажатия кнопки подтверждения.',
-    fileResponse: 'Вложение выбрано. В этой демонстрации файл не отправляется на сервер; подключите API загрузки, чтобы анализировать его содержимое.',
-    stockError: 'Недостаточно остатка для указанного количества.',
-    steps: ['Поиск позиции в каталоге', 'Проверка остатка: 0', 'Подбор доступного аналога'],
-  },
-  kz: {
-    cart: 'Себет', cartAria: 'Себетті ашу, тауар саны: ', emptyCart: 'Себет әзірше бос', cartTitle: 'Себет', closeCart: 'Себетті жабу', unitsShort: 'дана',
-    itemCount: (count) => count + ' тауар', quantity: 'Саны', remove: 'Тауарды жою', stockLabel: 'Қоймада', total: 'Барлығы',
-    checkout: 'Тапсырысты рәсімдеу', demoOrder: 'Төлемсіз демонстрациялық тапсырыс', orderSuccess: 'Тестілік тапсырыс сәтті жасалды.',
-    emptyTitle: 'Себет әзірше бос', emptyCopy: 'Чаттан қажетті тауарды қосыңыз — мұнда позициялар мен жалпы сома көрсетіледі.',
-    freeShippingNeeded: (amount) => 'ҚР бойынша тегін жеткізуге ' + amount + ' ₸ қалды (50 000 ₸-ден бастап тегін)',
-    freeShippingReached: 'Бұл себетке ҚР бойынша жеткізу тегін.',
-    shippingProgress: 'Тегін жеткізу прогресі',
-    cartLimit: 'Қоймада қолжетімді саны:', cartLimitSuffix: 'дана', cartFailure: 'Себетті жаңарту мүмкін болмады. Қайталап көріңіз.',
-    certificateDownloaded: 'Демонстрациялық PDF жүктелді. Бұл ресми сертификат емес.',
-    inStock: 'қоймада бар', stockEmpty: 'Қоймада жоқ', article: 'Артикул', quantityLabel: 'Саны',
-    quantityDown: 'Санын азайту', quantityUp: 'Санын арттыру', analogTitle: 'Ұсынылатын балама',
-    demoStock: 'демо қалдықта', unknownPrice: 'Бағасы нақтыланады', unknownSpecs: 'Сипаттамалары нақтыланады',
-    cableName: 'ВВГнг(А)-LS 3×2,5 кабелі', legrandName: 'Legrand DRX250, 3P, 160 A', analogName: 'CHINT eB автоматты ажыратқышы, 3P, 160 A',
-    analogRationale: '3P, 160 A және 4,5 кА параметрлері сәйкес; демонстрациялық сценарийде ГОСТ бойынша үйлесімділігі расталған.',
-    cableSpecs: ['3 өзек', '2,5 мм²', 'нг(А)-LS'], analogSpecs: ['3P', '160 A', '4,5 кА'], sourceSpecs: ['3P', '160 A', '4,5 кА'],
-    meterUnit: 'м', pieceUnit: 'дана', stockUnavailable: 'Бұл тауардың қолжетімді қалдығы жоқ.',
-    stockMax: (count, unit) => 'Ең көбі ' + count + ' ' + unit + ' қосуға болады.', serverCartError: 'Себетті серверде жаңарту мүмкін болмады.',
-    demoResponse: 'Демо жауап · синтетикалық деректер',
-    fallbackAnswer: 'Демо каталогтан дәл сәйкес тауар табылмады. Артикулды немесе параметрлерді нақтылаңыз — позиция мен үйлесімділікті тексеремін.',
-    fallbackSteps: ['Сұрау параметрлерін талдау', 'Каталогтан сәйкес тауар іздеу', 'Қолжетімді тауарлардың қалдығын тексеру'],
-    typeLabels: { search: 'іздеу', catalog: 'каталог', stock: 'қалдық', analogs: 'балама', delivery: 'жеткізу', check: 'тексеру', intent: 'сұрау' },
-    assistant: 'ChipAI — ekt.kz кеңесшісі', launcher: 'EKT кеңесшісі', online: 'Желіде', role: 'ekt.kz кеңесшісі',
-    catalogHelp: 'Каталог бойынша көмек', replyTime: 'Әдетте бір минутта жауап береміз',
-    welcomeKicker: 'Көмектесуге дайынмын', welcome: 'Сәлеметсіз бе! Тауарды табуға, қоймадағы қалдығын тексеруге, баламасын таңдауға және құжаттарын қарауға көмектесемін.',
-    welcomeHint: 'Артикулды жазыңыз немесе тапсырманы өз сөзіңізбен сипаттаңыз.',
-    prompts: ['Кабель ВВГнг 3х2.5', 'Legrand 160A баламасы', 'Жеткізу және көтерме шарттары'],
-    promptQueries: ['Кабель ВВГнг 3х2.5', 'Legrand 160A баламасы', 'Жеткізу және көтерме шарттары'],
-    placeholder: 'Не табу керегін жазыңыз…', footer: 'ekt.kz кеңесшісі', demo: 'Каталогтың демо деректері',
-    add: '✓ Себетке қосу', noStock: 'Қоймада жоқ', adding: 'Қосылуда…',
-    languageToggle: 'Интерфейс тілін ауыстыру: RU, KZ немесе EN',
-    success: '✓ Тауар себетке қосылды!', cartAdded: (count) => '✓ ' + count + ' тауар себетке қосылды', checkoutLink: 'Тапсырысты рәсімдеуге өту',
-    reasoning: 'Модельдің іздеу қадамдары', stepCount: (count) => count + ' қадам', certificateLink: '📄 ГОСТ сәйкестік сертификаты (PDF)',
-    cableAnswer: 'ВВГнг 3×2,5 кабелі табылды және қоймада бар. Ұзындығын тексеріп, карточкадағы батырмамен қосуды растаңыз.',
-    cableSteps: ['ВВГнг 3×2,5 кабелін каталогтан іздеу', 'Қойма қалдығын тексеру: 1250 м бар', 'Сипаттамалар мен ГОСТ сертификатын тексеру'],
-    analogAnswer: 'Legrand тауары қоймада жоқ, бірақ ГОСТ бойынша 100% үйлесімді баламасын таңдадық.',
-    analogSteps: ['Legrand DRX250 160A іздеу', 'Legrand қалдығы: 0', 'Сертификатталған баламаны іздеу: 3P, 160A, 4.5 кА', 'Сипаттамалары сәйкес CHINT eB табылды'],
-    deliveryTitle: 'Жеткізу және көтерме шарттар', deliveryFree: 'ҚР бойынша тегін жеткізу',
-    deliveryPickup: 'Өзі алып кету', deliveryPickupText: 'Астана және Алматы', deliveryPayment: 'Заңды тұлғаларға төлем',
-    deliveryPaymentText: 'Қолма-қол ақшасыз есеп айырысу', deliverySupport: 'Бірыңғай анықтама желісі',
-    deliveryAnswer: 'Сатып алудың негізгі шарттарын жинақтадым. Нақты қолжетімділік пен мерзімді менеджер растайды.',
-    deliverySteps: ['ҚР бойынша жеткізу ережелерін тексеру', 'Көтерме және қолма-қол ақшасыз төлем шарттарын тексеру', 'Клиентке қысқаша ақпарат дайындау'],
-    orderGuard: 'Себет тауар карточкасындағы растау батырмасы басылғанда ғана өзгереді.',
-    fileResponse: 'Файл таңдалды. Бұл демонстрацияда ол серверге жіберілмейді; мазмұнын талдау үшін жүктеу API қажет.',
-    stockError: 'Көрсетілген санға қойма қалдығы жеткіліксіз.',
-    steps: ['Тауарды каталогтан іздеу', 'Қоймадағы қалдықты тексеру: 0', 'Қолжетімді баламаны таңдау'],
-  },
-  en: {
-    cart: 'Cart', cartAria: 'Open cart, items: ', emptyCart: 'Your cart is empty', cartTitle: 'Shopping cart', closeCart: 'Close cart', unitsShort: 'units',
-    itemCount: (count) => count + (count === 1 ? ' item' : ' items'), quantity: 'Quantity', remove: 'Remove item', stockLabel: 'In stock', total: 'Total',
-    checkout: 'Checkout', demoOrder: 'Demo order, no payment required', orderSuccess: 'Test order created successfully.',
-    emptyTitle: 'Your cart is empty', emptyCopy: 'Add a product from chat to see items and the total here.',
-    freeShippingNeeded: (amount) => amount + ' ₸ left for free delivery in Kazakhstan (free from 50,000 ₸)',
-    freeShippingReached: 'This cart qualifies for free delivery in Kazakhstan.',
-    shippingProgress: 'Free delivery progress',
-    cartLimit: 'Available stock:', cartLimitSuffix: 'units', cartFailure: 'Could not update the cart. Please try again.',
-    certificateDownloaded: 'Demo PDF downloaded. This is not an official certificate.',
-    inStock: 'in stock', stockEmpty: 'Out of stock', article: 'Article', quantityLabel: 'Quantity',
-    quantityDown: 'Decrease quantity', quantityUp: 'Increase quantity', analogTitle: 'Suggested equivalent',
-    demoStock: 'in demo stock', unknownPrice: 'Price on request', unknownSpecs: 'Specifications on request',
-    cableName: 'VVGng(A)-LS cable 3×2.5', legrandName: 'Legrand DRX250, 3P, 160 A', analogName: 'CHINT eB circuit breaker, 3P, 160 A',
-    analogRationale: '3P, 160 A and 4.5 kA parameters match; GOST compatibility is confirmed for this demo scenario.',
-    cableSpecs: ['3 cores', '2.5 mm²', 'ng(A)-LS'], analogSpecs: ['3P', '160 A', '4.5 kA'], sourceSpecs: ['3P', '160 A', '4.5 kA'],
-    meterUnit: 'm', pieceUnit: 'pcs.', stockUnavailable: 'No stock is available for this item.',
-    stockMax: (count, unit) => 'You can add up to ' + count + ' ' + unit + '.', serverCartError: 'Could not update the cart on the server.',
-    demoResponse: 'Demo answer · synthetic data',
-    fallbackAnswer: 'No exact match was found in the demo catalog. Share an article number or specifications and I will check the item and compatibility.',
-    fallbackSteps: ['Parsing the request parameters', 'Searching matching catalog items', 'Checking stock availability'],
-    typeLabels: { search: 'search', catalog: 'catalog', stock: 'stock', analogs: 'equivalent', delivery: 'delivery', check: 'check', intent: 'request' },
-    assistant: 'ChipAI — ekt.kz consultant', launcher: 'EKT AI Assistant', online: 'Online', role: 'ekt.kz consultant',
-    catalogHelp: 'Catalog assistance', replyTime: 'We usually reply within a minute',
-    welcomeKicker: 'Happy to help', welcome: 'Hello! I can find a product, check stock, suggest an equivalent, and find documents.',
-    welcomeHint: 'Enter an article number or describe what you need.',
-    prompts: ['VVGng cable 3x2.5', 'Legrand 160A equivalent', 'Delivery and wholesale terms'],
-    promptQueries: ['VVGng cable 3x2.5', 'Legrand 160A equivalent', 'Delivery and wholesale terms'],
-    placeholder: 'What are you looking for?…', footer: 'ekt.kz assistant', demo: 'Demo catalog data',
-    add: '✓ Add to cart', noStock: 'Out of stock', adding: 'Adding…',
-    languageToggle: 'Switch language: RU, KZ, or EN',
-    success: '✓ Product added to cart!', cartAdded: (count) => '✓ Added: ' + count, checkoutLink: 'Continue to checkout',
-    reasoning: 'Model search steps', stepCount: (count) => count + (count === 1 ? ' step' : ' steps'), certificateLink: '📄 GOST certificate of conformity (PDF)',
-    cableAnswer: 'Found VVGng 3×2.5 cable in stock. Check the length and confirm using the button on the product card.',
-    cableSteps: ['Searching the catalog for VVGng 3×2.5 cable', 'Checking stock: 1,250 m available', 'Checking specifications and GOST certificate'],
-    analogAnswer: 'Legrand is out of stock, but we found a 100% GOST-compatible equivalent.',
-    analogSteps: ['Searching for Legrand DRX250 160A', 'Legrand stock: 0', 'Searching certified equivalent: 3P, 160A, 4.5 kA', 'Found CHINT eB with matching parameters'],
-    deliveryTitle: 'Delivery and wholesale terms', deliveryFree: 'Free delivery in Kazakhstan',
-    deliveryPickup: 'Pickup', deliveryPickupText: 'Astana and Almaty', deliveryPayment: 'Payment for businesses',
-    deliveryPaymentText: 'Bank transfer', deliverySupport: 'Customer information line',
-    deliveryAnswer: 'Here is a summary of the main purchase terms. A manager can confirm exact availability and timing.',
-    deliverySteps: ['Checking Kazakhstan delivery terms', 'Checking wholesale and bank transfer conditions', 'Preparing a short summary'],
-    orderGuard: 'The cart changes only when you press the confirmation button on a product card.',
-    fileResponse: 'The file is selected. This demo does not upload it; connect a file upload API to analyze its contents.',
-    stockError: 'There is not enough stock for that quantity.',
-    steps: ['Searching the catalog', 'Checking stock: 0', 'Finding an available equivalent'],
-  },
-};
 
-const $ = (selector) => document.querySelector(selector);
 const ui = {
-  launcher: $('#chat-launcher'),
+  launcher: $<HTMLButtonElement>('#chat-launcher'),
   widget: $('#chat-widget'),
-  close: $('#close-chat'),
-  minimize: $('#minimize-chat'),
+  close: $<HTMLButtonElement>('#close-chat'),
+  minimize: $<HTMLButtonElement>('#minimize-chat'),
   messages: $('#messages'),
   quickPrompts: $('#quick-prompts'),
-  form: $('#chat-form'),
-  input: $('#message-input'),
-  send: $('#send-button'),
-  attach: $('#attach-button'),
-  fileInput: $('#file-input'),
+  form: $<HTMLFormElement>('#chat-form'),
+  input: $<HTMLTextAreaElement>('#message-input'),
+  send: $<HTMLButtonElement>('#send-button'),
+  attach: $<HTMLButtonElement>('#attach-button'),
+  fileInput: $<HTMLInputElement>('#file-input'),
   attachmentPreview: $('#attachment-preview'),
   cartCount: $('#header-cart-count'),
-  cartLink: $('#store-cart-link'),
+  cartLink: $<HTMLAnchorElement>('#store-cart-link'),
   drawerBackdrop: $('#cart-drawer-backdrop'),
   drawer: $('#cart-drawer'),
-  drawerClose: $('#cart-drawer-close'),
+  drawerClose: $<HTMLButtonElement>('#cart-drawer-close'),
   drawerItems: $('#cart-drawer-items'),
   shippingCopy: $('#shipping-progress-copy'),
   shippingBar: $('#shipping-progress-bar'),
   cartTotal: $('#cart-total'),
-  checkoutButton: $('#cart-checkout-button'),
+  checkoutButton: $<HTMLButtonElement>('#cart-checkout-button'),
   toasts: $('#toast-region'),
 };
 
 const mascotMounts = [
-  mountChipMascot($('#launcher-chip-mascot'), 60),
-  mountChipMascot($('#header-chip-mascot'), 41),
+  mountChipMascot($('#launcher-chip-mascot'), 58),
+  mountChipMascot($('#header-chip-mascot'), 48),
+  mountChipMascot(document.querySelector('#welcome-chip-mascot'), 88),
 ];
-let mascotState = 'idle';
-let mascotStateTimer;
+let mascotState: ChipMascotState = 'idle';
+let mascotStateTimer: number | undefined;
 
-function setMascotState(state) {
+function setMascotState(state: ChipMascotState) {
   window.clearTimeout(mascotStateTimer);
   mascotState = state;
   mascotMounts.forEach((mascot) => mascot.setState(state));
@@ -232,33 +93,52 @@ const fixtures = {
   },
 };
 
-const productRegistry = new Map();
-const history = [];
-let sessionId = createSessionId();
-let attachments = [];
-let cart = { items: [], checkout_url: CHECKOUT_FALLBACK };
+const productRegistry = new Map<string, Product>();
+const history: HistoryMessage[] = [];
+const sessionId = createSessionId();
+let attachments: File[] = [];
+let cart: Cart = { items: [], checkout_url: CHECKOUT_FALLBACK };
 let backendAvailable = false;
 let isBusy = false;
-let toastTimer;
-let language = (() => {
-  try { return ['ru', 'kz', 'en'].includes(localStorage.getItem(LANGUAGE_KEY)) ? localStorage.getItem(LANGUAGE_KEY) : 'ru'; }
-  catch { return 'ru'; }
+let toastTimer: number | undefined;
+let chatFocusTimer: number | undefined;
+function isLanguage(value: string | null | undefined): value is Language {
+  return value === 'ru' || value === 'kz' || value === 'en';
+}
+
+let language: Language = (() => {
+  try {
+    const saved = localStorage.getItem(LANGUAGE_KEY);
+    return isLanguage(saved) ? saved : 'ru';
+  } catch { return 'ru'; }
 })();
 
-function t(key) {
+function t<Key extends keyof typeof copy.ru>(key: Key): (typeof copy.ru)[Key] {
   return copy[language][key];
+}
+
+function setLanguage(value: Language) {
+  language = value;
+  try { localStorage.setItem(LANGUAGE_KEY, language); } catch { /* Keep this tab's choice. */ }
+  applyLanguage();
 }
 
 function applyLanguage() {
   document.documentElement.lang = language === 'kz' ? 'kk' : language;
-  document.querySelectorAll('[data-language-option]').forEach((option) => {
+  document.querySelectorAll<HTMLElement>('[data-language-option]').forEach((option) => {
     option.classList.toggle('is-current', option.dataset.languageOption === language);
+  });
+  $('#chat-languages').setAttribute('aria-label', t('languageToggle'));
+  document.querySelectorAll<HTMLButtonElement>('[data-chat-language]').forEach((button) => {
+    const selected = button.dataset.chatLanguage === language;
+    button.classList.toggle('is-current', selected);
+    button.setAttribute('aria-pressed', String(selected));
   });
   $('#language-toggle').setAttribute('aria-label', t('languageToggle'));
   $('#cart-label').textContent = t('cart');
-  $('#assistant-name-text').textContent = t('assistant');
+  $('#assistant-name-text').textContent = 'ChipAI';
   ui.widget.setAttribute('aria-label', t('assistant'));
-  $('#launcher-label-text').textContent = t('launcher');
+  $('#launcher-label-text').textContent = 'ChipAI ' + t('online');
   $('#online-label').textContent = t('online');
   $('#assistant-role').textContent = t('role');
   $('#catalog-help').textContent = t('catalogHelp');
@@ -266,21 +146,33 @@ function applyLanguage() {
   $('#welcome-kicker').textContent = t('welcomeKicker');
   $('#welcome-copy').textContent = t('welcome');
   $('#welcome-hint').textContent = t('welcomeHint');
-  $('#message-input').placeholder = t('placeholder');
+  $('#welcome-time').textContent = t('welcomeTime');
+  $('#composer-send-hint').textContent = t('composerSendHint');
+  $('#composer-newline-hint').textContent = t('composerNewlineHint');
+  ui.input.placeholder = t('placeholder');
+  ui.input.setAttribute('aria-label', t('messageLabel'));
+  ui.send.setAttribute('aria-label', t('sendMessage'));
+  ui.attach.setAttribute('aria-label', t('attachFile'));
+  ui.attach.title = t('attachFileTitle');
+  ui.quickPrompts.setAttribute('aria-label', t('promptExamples'));
   $('#footer-assistant-label').textContent = t('footer');
   $('#demo-data-label').textContent = t('demo');
-  ui.launcher.setAttribute('aria-label', language === 'ru' ? 'Открыть ИИ-консультанта' : language === 'kz' ? 'EKT кеңесшісін ашу' : 'Open EKT AI Assistant');
-  ui.close.setAttribute('aria-label', language === 'ru' ? 'Закрыть чат' : language === 'kz' ? 'Чатты жабу' : 'Close chat');
-  ui.minimize.setAttribute('aria-label', language === 'ru' ? 'Свернуть чат' : language === 'kz' ? 'Чатты жию' : 'Minimize chat');
+  updateLauncherLabel();
+  const closeLabel = language === 'ru' ? 'Закрыть чат' : language === 'kz' ? 'Чатты жабу' : 'Close chat';
+  const minimizeLabel = language === 'ru' ? 'Свернуть чат' : language === 'kz' ? 'Чатты жию' : 'Minimize chat';
+  ui.close.setAttribute('aria-label', closeLabel);
+  ui.close.title = closeLabel;
+  ui.minimize.setAttribute('aria-label', minimizeLabel);
+  ui.minimize.title = minimizeLabel;
   ui.quickPrompts.querySelectorAll('[data-prompt-label]').forEach((label, index) => {
     label.textContent = t('prompts')[index];
-    label.parentElement.dataset.prompt = t('promptQueries')[index];
+    if (label.parentElement) label.parentElement.dataset.prompt = t('promptQueries')[index];
   });
-  ui.messages.querySelectorAll('[data-add-cart]').forEach((button) => {
+  ui.messages.querySelectorAll<HTMLButtonElement>('[data-add-cart]').forEach((button) => {
     const product = productRegistry.get(String(button.dataset.productId));
     button.innerHTML = '<svg class="icon"><use href="#i-cart"></use></svg>' + (product && remainingStock(product) > 0 ? t('add') : t('noStock'));
   });
-  ui.messages.querySelectorAll('[data-cart-confirmation]').forEach((confirmation) => {
+  ui.messages.querySelectorAll<HTMLElement>('[data-cart-confirmation]').forEach((confirmation) => {
     const status = confirmation.querySelector('[data-cart-added]');
     const anchor = confirmation.querySelector('a');
     if (status) status.textContent = t('cartAdded')(Number(confirmation.dataset.quantity) || 1);
@@ -291,17 +183,25 @@ function applyLanguage() {
   ui.messages.querySelectorAll('.reasoning > summary > span:first-of-type').forEach((label) => {
     label.textContent = t('reasoning');
   });
-  ui.messages.querySelectorAll('[data-demo-scenario]').forEach((row) => {
-    const reply = quickScenarioReply(row.dataset.demoScenario);
-    row.querySelector('.assistant-bubble').innerHTML = renderAssistantContent(reply);
+  ui.messages.querySelectorAll<HTMLDetailsElement>('.reasoning-live').forEach((timeline) => {
+    const template = document.createElement('template');
+    template.innerHTML = renderProcessingReasoning();
+    const localized = template.content.querySelector('details');
+    // Keep the existing details element so the user's expanded state survives.
+    if (localized) timeline.replaceChildren(...localized.childNodes);
+  });
+  ui.messages.querySelectorAll<HTMLElement>('[data-demo-scenario]').forEach((row) => {
+    const reply = quickScenarioReply(scenarioFromValue(row.dataset.demoScenario) || 'delivery');
+    const bubble = row.querySelector('.assistant-bubble');
+    if (bubble) bubble.innerHTML = renderAssistantContent(reply);
   });
   $('#cart-drawer-title').textContent = t('cartTitle');
   $('#cart-total-label').textContent = t('total');
   $('#cart-checkout-button').textContent = t('checkout');
   $('#cart-demo-note').textContent = t('demoOrder');
   ui.drawerClose.setAttribute('aria-label', t('closeCart'));
-  ui.shippingCopy.parentElement.setAttribute('aria-label', t('deliveryTitle'));
-  ui.shippingBar.parentElement.setAttribute('aria-label', t('shippingProgress'));
+  ui.shippingCopy.parentElement?.setAttribute('aria-label', t('deliveryTitle'));
+  ui.shippingBar.parentElement?.setAttribute('aria-label', t('shippingProgress'));
   updateCartHeader();
   renderCartDrawer();
 }
@@ -318,33 +218,17 @@ function createSessionId() {
   }
 }
 
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]);
-}
-
-function safeExternalUrl(value) {
-  if (!value) return null;
-  try {
-    const url = new URL(value, window.location.origin);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
-function money(value) {
+function money(value: number | string) {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return t('unknownPrice');
   return new Intl.NumberFormat(language === 'en' ? 'en-KZ' : language === 'kz' ? 'kk-KZ' : 'ru-KZ', { maximumFractionDigits: 0 }).format(amount) + ' ₸';
 }
 
-function countItems(items) {
+function countItems(items: CartItem[]) {
   return (items || []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0);
 }
 
-function totalSum(items) {
+function totalSum(items: CartItem[]) {
   return (items || []).reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
 }
 
@@ -356,7 +240,7 @@ function updateCartHeader() {
   ui.cartLink.title = count ? String(count) + ' ' + t('unitsShort') + ' · ' + money(totalSum(cart.items)) : t('emptyCart');
 }
 
-function setCartItems(items, checkoutUrl) {
+function setCartItems(items: CartItem[] | undefined, checkoutUrl?: string) {
   cart = {
     items: (Array.isArray(items) ? items : []).map((item) => {
       const productId = Number(item.product_id || item.id);
@@ -372,14 +256,14 @@ function setCartItems(items, checkoutUrl) {
   renderCartDrawer();
 }
 
-function cartItemStock(item) {
+function cartItemStock(item: CartItem) {
   const product = productRegistry.get(String(item.product_id));
   return Math.max(0, Number(item.stock ?? (product && product.stock) ?? item.available_quantity ?? 0));
 }
 
-function localizedUnit(productId, unit) {
+function localizedUnit(productId: number, unit?: string) {
   if (Number(productId) === Number(fixtures.cable.id)) return t('meterUnit');
-  if ([fixtures.breaker.id, Number(fixtures.breaker.analogs[0].id)].includes(Number(productId)) && ['шт.', 'pcs.', 'дана'].includes(unit)) return t('pieceUnit');
+  if ([fixtures.breaker.id, Number(fixtures.breaker.analogs[0].id)].includes(Number(productId)) && ['шт.', 'pcs.', 'дана'].includes(unit || '')) return t('pieceUnit');
   return unit || (language === 'en' ? 'pcs.' : language === 'kz' ? 'дана' : 'шт.');
 }
 
@@ -418,8 +302,8 @@ function renderCartDrawer() {
   const locale = language === 'en' ? 'en-KZ' : language === 'kz' ? 'kk-KZ' : 'ru-KZ';
   const remainingText = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(remaining);
   ui.shippingCopy.textContent = remaining ? t('freeShippingNeeded')(remainingText) : t('freeShippingReached');
-  ui.shippingBar.style.width = progress + '%';
-  ui.shippingBar.parentElement.setAttribute('aria-valuenow', String(Math.round(progress)));
+  ui.shippingBar.style.transform = 'scaleX(' + progress / 100 + ')';
+  ui.shippingBar.parentElement?.setAttribute('aria-valuenow', String(Math.round(progress)));
   ui.checkoutButton.disabled = !items.length;
 }
 
@@ -438,7 +322,7 @@ function closeCartDrawer() {
   ui.cartLink.focus();
 }
 
-function updateCartQuantity(productId, change) {
+function updateCartQuantity(productId: number, change: number) {
   const item = cart.items.find((entry) => Number(entry.product_id || entry.id) === Number(productId));
   if (!item) return;
   const nextQuantity = Number(item.quantity) + change;
@@ -454,7 +338,7 @@ function updateCartQuantity(productId, change) {
   renderCartDrawer();
 }
 
-function removeCartItem(productId) {
+function removeCartItem(productId: number) {
   cart.items = cart.items.filter((item) => Number(item.product_id || item.id) !== Number(productId));
   saveDemoCart();
   updateCartHeader();
@@ -469,7 +353,7 @@ function saveDemoCart() {
   }
 }
 
-async function fetchTimeout(url, options, timeout) {
+async function fetchTimeout(url: string, options: RequestInit = {}, timeout = 2500) {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeout || 2500);
   try {
@@ -489,7 +373,7 @@ async function connectBackend() {
   try {
     const response = await fetchTimeout(API_BASE + '/cart?session_id=' + encodeURIComponent(sessionId), {}, 1300);
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json() as CartResponse;
       backendAvailable = true;
       const saved = readDemoCart();
       if (saved) setCartItems(saved, data.checkout_url);
@@ -500,7 +384,7 @@ async function connectBackend() {
     backendAvailable = false;
   }
   try {
-    const saved = JSON.parse(localStorage.getItem(DEMO_CART_KEY) || 'null');
+    const saved = JSON.parse(localStorage.getItem(DEMO_CART_KEY) || 'null') as Partial<Cart> | null;
     if (saved && Array.isArray(saved.items)) setCartItems(saved.items, saved.checkout_url);
     else updateCartHeader();
   } catch {
@@ -508,18 +392,34 @@ async function connectBackend() {
   }
 }
 
+function updateLauncherLabel() {
+  const isOpen = ui.widget.getAttribute('aria-hidden') === 'false';
+  const labels = {
+    ru: ['Открыть чат ChipAI', 'Закрыть чат ChipAI'],
+    kz: ['ChipAI чатын ашу', 'ChipAI чатын жабу'],
+    en: ['Open ChipAI chat', 'Close ChipAI chat'],
+  };
+  ui.launcher.setAttribute('aria-label', labels[language][isOpen ? 1 : 0]);
+}
+
 function openChat() {
+  window.clearTimeout(chatFocusTimer);
+  ui.widget.inert = false;
   ui.widget.setAttribute('aria-hidden', 'false');
   ui.launcher.setAttribute('aria-expanded', 'true');
   document.body.classList.add('chat-open');
-  window.setTimeout(() => ui.input.focus(), 70);
+  updateLauncherLabel();
+  chatFocusTimer = window.setTimeout(() => ui.input.focus(), 70);
 }
 
 function closeChat() {
+  window.clearTimeout(chatFocusTimer);
+  ui.launcher.focus();
+  ui.widget.inert = true;
   ui.widget.setAttribute('aria-hidden', 'true');
   ui.launcher.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('chat-open');
-  ui.launcher.focus();
+  updateLauncherLabel();
 }
 
 function timeNow() {
@@ -531,7 +431,7 @@ function scrollToBottom() {
   ui.messages.scrollTop = ui.messages.scrollHeight;
 }
 
-function appendUserMessage(text, files) {
+function appendUserMessage(text: string, files: File[]) {
   const fileList = files.map((file) =>
     '<span><svg class="icon"><use href="#i-file"></use></svg>' + escapeHtml(file.name) + '</span>',
   ).join('');
@@ -546,35 +446,31 @@ function appendUserMessage(text, files) {
   scrollToBottom();
 }
 
-function renderReasoning(steps) {
-  if (!steps || !steps.length) return '';
-  const rows = steps.map((step) => {
-    const label = step.message || step.tool_name || step.type || copy[language].fallbackAnswer;
-    const type = step.type
-      ? '<span class="reasoning-type">' + escapeHtml(copy[language].typeLabels[step.type] || String(step.type).replaceAll('_', ' ')) + '</span>'
-      : '';
-    return '<li>' + type + escapeHtml(label) + '</li>';
-  }).join('');
-  return '<details class="reasoning"><summary><svg class="icon"><use href="#i-spark"></use></svg>' +
-    '<span>' + t('reasoning') + '</span><span class="reasoning-count">' + copy[language].stepCount(steps.length) + '</span>' +
-    '<svg class="icon reasoning-chevron"><use href="#i-chevron"></use></svg></summary>' +
-    '<ol class="reasoning-list">' + rows + '</ol></details>';
+function renderReasoning(steps: ReasoningStep[], live = false) {
+  return renderReasoningTimeline(steps, {
+    title: t('reasoning'), fallback: t('fallbackAnswer'), count: t('stepCount'), types: t('typeLabels'),
+    stateLabels: t('reasoningStates'),
+  }, live);
 }
 
-function normaliseProduct(source, fallbackId) {
+function renderProcessingReasoning() {
+  return renderReasoning([{ type: 'intent', status: 'running', message: t('processing') }], true);
+}
+
+function normaliseProduct(source: ProductSource, fallbackId?: number): Product {
   source = source || {};
   const id = Number(source.product_id || source.id || fallbackId || 800000);
   const certificateUrl = safeExternalUrl(source.certificate_url || source.certificate_link || (typeof source.certificate === 'string' ? source.certificate : null));
   let specifications = source.specifications || [];
   if (typeof specifications === 'string') specifications = specifications.replaceAll(';', ',').split(',').map((item) => item.trim()).filter(Boolean);
   if (!Array.isArray(specifications)) specifications = [];
-  const product = {
+  const product: Product = {
     id: Number.isFinite(id) ? id : Number(fallbackId || 800000),
     brand: source.brand || source.manufacturer || 'Каталог ekt.kz',
     name: source.name || source.title || 'Товар из каталога ekt.kz',
     article: source.article || source.sku || '—',
     price: Number(source.price) || 0,
-    stock: Math.max(0, Number(source.quantity || source.stock || source.available_quantity || 0)),
+    stock: Math.max(0, Number(source.quantity ?? source.stock ?? source.available_quantity ?? 0)),
     unit: source.unit || 'шт.',
     specifications: specifications,
     certificateUrl: certificateUrl,
@@ -590,7 +486,7 @@ function normaliseProduct(source, fallbackId) {
   return product;
 }
 
-function renderQuantityControl(product) {
+function renderQuantityControl(product: Product) {
   const stock = Math.max(0, Number(product.stock) || 0);
   const available = Math.min(stock, remainingStock(product));
   const disabled = available < 1 ? ' disabled' : '';
@@ -604,7 +500,7 @@ function renderQuantityControl(product) {
     '</button><div class="cart-confirmation" data-cart-confirmation hidden></div>';
 }
 
-function renderAnalog(analog) {
+function renderAnalog(analog: Product) {
   const stock = Number(analog.stock) || 0;
   const price = analog.price ? money(analog.price) : t('unknownPrice');
   const rationale = analog.rationale || t('fallbackAnswer');
@@ -613,11 +509,17 @@ function renderAnalog(analog) {
     '<div class="analog-offer" data-product-card="' + escapeHtml(analog.id) + '">' +
       '<div class="analog-product"><span class="product-visual"><svg class="icon"><use href="#i-bolt"></use></svg></span>' +
         '<span class="analog-copy"><strong>' + escapeHtml(analog.name) + '</strong><small>' + escapeHtml(analog.article) + ' · ' + price + ' · ' + stock + ' ' + escapeHtml(analog.unit) + ' ' + t('demoStock') + '</small></span></div>' +
-      renderQuantityControl(analog) +
+      renderSpecs(analog) + renderQuantityControl(analog) +
     '</div></div>';
 }
 
-function renderProductCard(product) {
+function renderSpecs(product: Product): string {
+  const specs = product.specifications.slice(0, 4).map((spec) => '<span>' + escapeHtml(spec) + '</span>').join('');
+  const certificate = product.certificate ? '<span class="spec-certificate"><svg class="icon"><use href="#i-shield"></use></svg>ГОСТ</span>' : '';
+  return '<div class="product-specs">' + certificate + (specs || '<span>' + t('unknownSpecs') + '</span>') + '</div>';
+}
+
+function renderProductCard(product: Product) {
   const inStock = Number(product.stock) > 0;
   const stockText = inStock ? String(product.stock) + ' ' + (product.unit || 'шт.') + ' ' + t('inStock') : t('stockEmpty');
   let certificate = '';
@@ -627,16 +529,13 @@ function renderProductCard(product) {
     certificate = '<a class="certificate-link" href="#demo-certificate" data-certificate-download data-article="' + escapeHtml(product.article) + '"><svg class="icon"><use href="#i-file"></use></svg>' + t('certificateLink') + '</a>';
   }
   const analogs = !inStock ? product.analogs.map(renderAnalog).join('') : '';
-  const specs = product.specifications.length
-    ? product.specifications.slice(0, 4).map((spec) => '<span>' + escapeHtml(spec) + '</span>').join('')
-    : '<span>' + t('unknownSpecs') + '</span>';
   const price = product.price ? money(product.price) + (product.unit === 'м' ? ' / м' : '') : t('unknownPrice');
   return '<article class="product-card" data-product-card="' + escapeHtml(product.id) + '">' +
     '<div class="product-topline"><span class="product-brand">' + escapeHtml(product.brand) + '</span>' +
-      '<span class="stock-badge ' + (inStock ? '' : 'out-of-stock') + '">' + stockText + '</span></div>' +
+      '<span class="stock-badge ' + (inStock ? '' : 'out-of-stock') + '">' + escapeHtml(stockText) + '</span></div>' +
     '<div class="product-body"><div class="product-title-row"><span class="product-visual"><svg class="icon"><use href="#i-bolt"></use></svg></span>' +
       '<span class="product-title-group"><h3>' + escapeHtml(product.name) + '</h3><span class="product-article">' + t('article') + ' ' + escapeHtml(product.article) + '</span></span></div>' +
-      '<div class="product-specs">' + specs + '</div><div class="product-meta"><strong class="product-price">' + price + '</strong>' +
+      renderSpecs(product) + '<div class="product-meta"><strong class="product-price">' + price + '</strong>' +
       '<span class="product-stock">' + Number(product.stock) + ' ' + escapeHtml(product.unit || 'шт.') + '</span></div>' +
       certificate + analogs + (inStock ? renderQuantityControl(product) : '') +
     '</div></article>';
@@ -650,7 +549,7 @@ function renderDeliveryCard() {
     '<div class="delivery-card-row"><span class="delivery-card-icon">118</span><span><strong>' + t('deliverySupport') + '</strong><a href="tel:118">118</a></span></div></section>';
 }
 
-function appendAssistantMessage(reply) {
+function appendAssistantMessage(reply: AssistantReply) {
   const scenarioAttribute = reply.scenario ? ' data-demo-scenario="' + escapeHtml(reply.scenario) + '"' : '';
   ui.messages.insertAdjacentHTML('beforeend',
     '<div class="message-row assistant-row"' + scenarioAttribute + '><span class="message-avatar"><svg class="icon"><use href="#i-bolt"></use></svg></span>' +
@@ -660,7 +559,7 @@ function appendAssistantMessage(reply) {
   scrollToBottom();
 }
 
-function renderAssistantContent(reply) {
+function renderAssistantContent(reply: AssistantReply) {
   const paragraphs = String(reply.answer || t('fallbackAnswer')).split(/\n+/).filter(Boolean)
     .map((line) => '<p>' + escapeHtml(line) + '</p>').join('');
   const demoLabel = reply.isDemo
@@ -675,13 +574,13 @@ function appendTyping() {
   const id = 'typing-' + String(Date.now());
   ui.messages.insertAdjacentHTML('beforeend',
     '<div class="message-row assistant-row" id="' + id + '"><span class="message-avatar"><svg class="icon"><use href="#i-bolt"></use></svg></span>' +
-    '<div class="message-stack"><div class="message-bubble assistant-bubble"><span class="typing-indicator" aria-label="Ассистент печатает"><i></i><i></i><i></i></span></div></div></div>',
+    '<div class="message-stack"><div class="message-bubble assistant-bubble">' + renderProcessingReasoning() + '<span class="typing-indicator" aria-hidden="true"><i></i><i></i><i></i></span></div></div></div>',
   );
   scrollToBottom();
   return id;
 }
 
-function demoReply(text) {
+function demoReply(text: string): AssistantReply {
   const query = String(text || '').toLocaleLowerCase('ru');
   if (query.includes('достав') || query.includes('жеткіз') || query.includes('delivery') || query.includes('оплат') || query.includes('партия') || query.includes('wholesale')) return quickScenarioReply('delivery');
   if (query.includes('кабел') || query.includes('ввг') || query.includes('cable') || query.includes('провод') || query.includes('сечени')) return quickScenarioReply('cable');
@@ -694,7 +593,7 @@ function demoReply(text) {
   };
 }
 
-function quickScenarioReply(scenario) {
+function quickScenarioReply(scenario: Scenario): AssistantReply {
   if (scenario === 'cable') {
     return {
       scenario: scenario,
@@ -729,20 +628,20 @@ function quickScenarioReply(scenario) {
   };
 }
 
-function isCartIntent(text) {
+function isCartIntent(text: string) {
   const query = String(text || '').trim().toLocaleLowerCase('ru');
   return query.includes('корзин') || query.includes('добав') || query.includes('оформ') || query.includes('заказ') || query.includes('закаж') ||
     query.includes('себет') || query.includes('қос') || query.includes('тапсырыс') || query.includes('рәсімде');
 }
 
-async function assistantReply(text, files) {
+async function assistantReply(text: string, files: File[]): Promise<AssistantReply> {
   if (files.length) {
     return {
       isDemo: true,
       answer: t('fileResponse'),
       steps: [
-        { type: 'attachment', message: 'Проверяю тип и размер выбранного файла' },
-        { type: 'integration', message: 'Ожидаю endpoint загрузки содержимого файла' },
+        { type: 'attachment', status: 'completed', message: t('attachmentChecked') },
+        { type: 'integration', status: 'pending', message: t('uploadPending') },
       ],
       products: [],
     };
@@ -765,7 +664,7 @@ async function assistantReply(text, files) {
         body: JSON.stringify({ message: message, session_id: sessionId, history: history.slice(-10), language: language }),
       }, 5000);
       if (!response.ok) throw new Error('Chat API returned ' + response.status);
-      const data = await response.json();
+      const data = await response.json() as ChatResponse;
       if (data.cart_updated) {
         return {
           isDemo: false,
@@ -786,14 +685,14 @@ async function assistantReply(text, files) {
         };
       }
     } catch (error) {
-      console.info('Using local demo response:', error.message);
+      console.info('Using local demo response:', error instanceof Error ? error.message : String(error));
     }
   }
   await new Promise((resolve) => window.setTimeout(resolve, 380));
   return demoReply(text);
 }
 
-function toast(message, isError) {
+function toast(message: string, isError = false) {
   window.clearTimeout(toastTimer);
   ui.toasts.innerHTML = '<div class="toast ' + (isError ? 'toast-error' : '') + '">' + escapeHtml(message) + '</div>';
   toastTimer = window.setTimeout(() => { ui.toasts.innerHTML = ''; }, 3200);
@@ -812,10 +711,10 @@ function updateAttachmentPreview() {
   ).join('');
 }
 
-function addFiles(list) {
+function addFiles(list: FileList | null) {
   const allowed = ['pdf', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp'];
   Array.from(list || []).forEach((file) => {
-    const extension = file.name.split('.').pop().toLowerCase();
+    const extension = (file.name.split('.').pop() || '').toLowerCase();
     if (!allowed.includes(extension)) {
       toast('Поддерживаются PDF, Excel, JPG, PNG и WEBP.', true);
       return;
@@ -829,24 +728,24 @@ function addFiles(list) {
   updateAttachmentPreview();
 }
 
-function readDemoCart() {
+function readDemoCart(): CartItem[] | null {
   try {
     const raw = localStorage.getItem(DEMO_CART_KEY);
     if (!raw) return null;
-    const saved = JSON.parse(raw);
+    const saved = JSON.parse(raw) as Partial<Cart> | null;
     return saved && Array.isArray(saved.items) ? saved.items : null;
   } catch {
     return null;
   }
 }
 
-function remainingStock(product) {
+function remainingStock(product: Product) {
   const existing = cart.items.find((item) => Number(item.product_id) === Number(product.id));
   return Math.max(0, Number(product.stock) - (Number(existing ? existing.quantity : 0) || 0));
 }
 
-function showConfirmation(card, quantity) {
-  const confirmation = card.querySelector('[data-cart-confirmation]');
+function showConfirmation(card: HTMLElement, quantity: number) {
+  const confirmation = card.querySelector<HTMLElement>('[data-cart-confirmation]');
   if (!confirmation) return;
   const checkout = safeExternalUrl(cart.checkout_url) || CHECKOUT_FALLBACK;
   confirmation.hidden = false;
@@ -866,12 +765,12 @@ function appendCartSystemMessage() {
   scrollToBottom();
 }
 
-async function addToCart(button) {
+async function addToCart(button: HTMLButtonElement) {
   if (button.disabled) return;
   const product = productRegistry.get(String(button.dataset.productId));
-  const card = button.closest('[data-product-card]');
-  const input = card && card.querySelector('[data-quantity-control] input');
-  if (!product || !input) return;
+  const card = button.closest<HTMLElement>('[data-product-card]');
+  const input = card && card.querySelector<HTMLInputElement>('[data-quantity-control] input');
+  if (!product || !input || !card) return;
   const quantity = Math.max(1, Math.floor(Number(input.value) || 1));
   const available = remainingStock(product);
   if (available < 1 || quantity > available) {
@@ -899,7 +798,7 @@ async function addToCart(button) {
         body: JSON.stringify(payload),
       }, 4500);
       if (!response.ok) throw new Error(t('serverCartError'));
-      const data = await response.json();
+      const data = await response.json() as CartResponse;
       if (Array.isArray(data.cart)) setCartItems(data.cart, cart.checkout_url);
       else await refreshServerCart();
     } else {
@@ -924,11 +823,11 @@ async function addToCart(button) {
 async function refreshServerCart() {
   const response = await fetchTimeout(API_BASE + '/cart?session_id=' + encodeURIComponent(sessionId), {}, 2500);
   if (!response.ok) throw new Error(t('serverCartError'));
-  const data = await response.json();
+  const data = await response.json() as CartResponse;
   setCartItems(data.items, data.checkout_url);
 }
 
-function clampQuantity(input) {
+function clampQuantity(input: HTMLInputElement) {
   const maximum = Math.max(1, Number(input.max) || 1);
   const quantity = Math.floor(Number(input.value) || 1);
   input.value = String(Math.min(maximum, Math.max(1, quantity)));
@@ -973,7 +872,7 @@ function downloadDemoCertificate() {
   toast(t('certificateDownloaded'));
 }
 
-async function submitMessage(event, promptScenario) {
+async function submitMessage(event: Event | null, promptScenario?: Scenario) {
   if (event) event.preventDefault();
   if (isBusy) return;
   const text = ui.input.value.trim();
@@ -991,7 +890,7 @@ async function submitMessage(event, promptScenario) {
   const typingId = appendTyping();
   try {
     const reply = promptScenario
-      ? await new Promise((resolve) => window.setTimeout(() => resolve(quickScenarioReply(promptScenario)), 800))
+      ? await new Promise<AssistantReply>((resolve) => window.setTimeout(() => resolve(quickScenarioReply(promptScenario)), 800))
       : await assistantReply(text, files);
     document.getElementById(typingId)?.remove();
     appendAssistantMessage(reply);
@@ -1002,16 +901,21 @@ async function submitMessage(event, promptScenario) {
     isBusy = false;
     if (mascotState === 'thinking') setMascotState('idle');
     ui.send.disabled = false;
-    ui.input.focus();
+    if (ui.widget.getAttribute('aria-hidden') === 'false') ui.input.focus();
   }
 }
 
-ui.launcher.addEventListener('click', openChat);
+ui.launcher.addEventListener('click', () => {
+  if (ui.widget.getAttribute('aria-hidden') === 'false') closeChat();
+  else openChat();
+});
+$('#chat-languages').addEventListener('click', (event) => {
+  const selected = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-chat-language]')?.dataset.chatLanguage : undefined;
+  if (isLanguage(selected)) setLanguage(selected);
+});
 $('#language-toggle').addEventListener('click', () => {
-  const languages = ['ru', 'kz', 'en'];
-  language = languages[(languages.indexOf(language) + 1) % languages.length];
-  try { localStorage.setItem(LANGUAGE_KEY, language); } catch { /* Locale remains active for this page. */ }
-  applyLanguage();
+  const languages: Language[] = ['ru', 'kz', 'en'];
+  setLanguage(languages[(languages.indexOf(language) + 1) % languages.length]);
 });
 ui.cartLink.addEventListener('click', (event) => {
   event.preventDefault();
@@ -1022,9 +926,10 @@ ui.drawerBackdrop.addEventListener('click', (event) => {
   if (event.target === ui.drawerBackdrop) closeCartDrawer();
 });
 ui.drawerItems.addEventListener('click', (event) => {
-  const actionButton = event.target.closest('[data-cart-action]');
+  if (!(event.target instanceof Element)) return;
+  const actionButton = event.target.closest<HTMLButtonElement>('[data-cart-action]');
   if (!actionButton) return;
-  const item = actionButton.closest('[data-cart-item]');
+  const item = actionButton.closest<HTMLElement>('[data-cart-item]');
   if (!item) return;
   const productId = Number(item.dataset.productId);
   if (actionButton.dataset.cartAction === 'remove') removeCartItem(productId);
@@ -1046,15 +951,16 @@ ui.input.addEventListener('input', () => {
   ui.input.style.height = Math.min(ui.input.scrollHeight, 96) + 'px';
 });
 ui.attach.addEventListener('click', () => ui.fileInput.click());
-ui.fileInput.addEventListener('change', (event) => {
-  addFiles(event.target.files);
-  event.target.value = '';
+ui.fileInput.addEventListener('change', () => {
+  addFiles(ui.fileInput.files);
+  ui.fileInput.value = '';
 });
 ui.quickPrompts.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-prompt]');
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest<HTMLButtonElement>('[data-prompt]');
   if (!button) return;
-  ui.input.value = button.dataset.prompt;
-  submitMessage(null, button.dataset.scenario);
+  ui.input.value = button.dataset.prompt || '';
+  void submitMessage(null, scenarioFromValue(button.dataset.scenario));
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !ui.drawerBackdrop.hidden) closeCartDrawer();
@@ -1065,25 +971,27 @@ document.addEventListener('keydown', (event) => {
   }
 });
 ui.attachmentPreview.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-remove-attachment]');
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest<HTMLButtonElement>('[data-remove-attachment]');
   if (!button) return;
   attachments.splice(Number(button.dataset.removeAttachment), 1);
   updateAttachmentPreview();
 });
 ui.messages.addEventListener('click', (event) => {
-  const checkoutLink = event.target.closest('[data-open-cart]');
+  if (!(event.target instanceof Element)) return;
+  const checkoutLink = event.target.closest<HTMLAnchorElement>('[data-open-cart]');
   if (checkoutLink) {
     event.preventDefault();
     openCartDrawer();
     return;
   }
-  const certificate = event.target.closest('[data-certificate-download]');
+  const certificate = event.target.closest<HTMLAnchorElement>('[data-certificate-download]');
   if (certificate) {
     event.preventDefault();
     downloadDemoCertificate();
     return;
   }
-  const quantityButton = event.target.closest('[data-quantity-action]');
+  const quantityButton = event.target.closest<HTMLButtonElement>('[data-quantity-action]');
   if (quantityButton) {
     const input = quantityButton.closest('[data-quantity-control]')?.querySelector('input');
     if (!input || quantityButton.disabled) return;
@@ -1091,13 +999,18 @@ ui.messages.addEventListener('click', (event) => {
     input.value = String(Math.min(Number(input.max) || 1, Math.max(1, (Number(input.value) || 1) + delta)));
     return;
   }
-  const addButton = event.target.closest('[data-add-cart]');
+  const addButton = event.target.closest<HTMLButtonElement>('[data-add-cart]');
   if (addButton) addToCart(addButton);
 });
 ui.messages.addEventListener('change', (event) => {
-  if (event.target.matches('[data-quantity-control] input')) clampQuantity(event.target);
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-quantity-control] input')) clampQuantity(event.target);
 });
 
+function scenarioFromValue(value: string | undefined): Scenario | undefined {
+  return value === 'cable' || value === 'analog' || value === 'delivery' ? value : undefined;
+}
+
+ui.widget.inert = ui.widget.getAttribute('aria-hidden') !== 'false';
 normaliseProduct(fixtures.breaker);
 normaliseProduct(fixtures.cable);
 updateCartHeader();
