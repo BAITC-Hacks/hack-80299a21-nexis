@@ -38,7 +38,7 @@
 │             Live ekt.kz Catalog & Stores API                │
 │  - https://ekt.kz/api/products                              │
 │  - https://ekt.kz/api/products/detail?id={id}               │
-│  - Basic Auth: apiuser / ApiEkt!2026                        │
+│  - Basic Auth credentials loaded from local .env            │
 └─────────────────────────────────────────────────────────────┘
 ```
 

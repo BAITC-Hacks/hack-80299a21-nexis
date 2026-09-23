@@ -1,10 +1,14 @@
 import os
 import json
-from typing import List, Dict, Any, Tuple
+import re
+import time
+from typing import List, Dict, Any, Optional, Tuple
 from openai import OpenAI
+from dotenv import load_dotenv
 from ekt_client import ekt_client
 from knowledge_base import search_knowledge_base, KB_ARTICLES
 
+load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
@@ -185,6 +189,8 @@ SYSTEM_PROMPT = """Ты — интеллектуальный ИИ-консуль
 2. ОСТАТКИ И НАЛИЧИЕ:
    - Количество в корзине не может превышать доступный остаток на складе.
    - Если остаток товара равен 0, ОБЯЗАТЕЛЬНО вызови инструмент `find_analogs` и предложи клиенту минимум 1 релевантный аналог из наличия с кратким обоснованием.
+   - Используй только значения, полученные из API. Не придумывай наличие, характеристики, сертификаты или цены. Если данные расходятся — сообщи о расхождении и попроси уточнить у менеджера.
+   - Не вызывай добавление в корзину без серверного предложения товара для этой сессии и явного подтверждения.
 3. УСЛОВИЯ ПОКУПКИ:
    - На вопросы об оплате (Kaspi, безнал с НДС), доставке по городам Казахстана или минимальной партии (от 1 шт.) отвечай точно по данным `get_purchase_terms`.
 4. ЯЗЫК:
@@ -196,8 +202,27 @@ SYSTEM_PROMPT = """Ты — интеллектуальный ИИ-консуль
 class AgentService:
     def __init__(self):
         self.client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        self.pending_offers: Dict[str, Dict[str, Any]] = {}
 
-    def execute_tool(self, tool_name: str, args: Dict[str, Any], cart_store: Dict[str, Any], session_id: str) -> Tuple[Any, Optional[Dict[str, Any]]]:
+    @staticmethod
+    def _is_explicit_confirmation(message: str) -> bool:
+        text = re.sub(r"[^\w\s]", " ", str(message or "").lower(), flags=re.UNICODE)
+        patterns = (
+            r"\bда\s+добавь\b", r"\bдобавь\s+в\s+корзину\b", r"\bдобавляй\b",
+            r"\bберу\b", r"\bподтверждаю\b", r"\bиә\s+себетке\s+сал\b",
+            r"\bиә\s+қос\b", r"\bсебетке\s+сал\b",
+        )
+        return any(re.search(pattern, text) for pattern in patterns)
+
+    @staticmethod
+    def _confirmation_quantity(message: str) -> Optional[int]:
+        text = str(message or "").lower()
+        match = re.search(r"\bдобавь(?:\s+в\s+корзину)?\s+([1-9]\d{0,3})\b", text)
+        if not match:
+            match = re.search(r"\b([1-9]\d{0,3})\s*(?:шт\.?|штук|единиц[уы]?)\b", text)
+        return int(match.group(1)) if match else None
+
+    def execute_tool(self, tool_name: str, args: Dict[str, Any], cart_store: Dict[str, Any], session_id: str, server_confirmed: bool = False) -> Tuple[Any, Optional[Dict[str, Any]]]:
         cart_mutation = None
         
         if tool_name == "search_products":
@@ -216,11 +241,13 @@ class AgentService:
                 return {"error": "Товар не найден"}, None
             stores = detail.get("stores", [])
             matched = [s for s in stores if city.lower() in s["name"].lower()]
-            return {"product_id": pid, "city": city, "matched_stores": matched or stores[:5]}, None
+            return {"product_id": pid, "city": city, "matched_stores": matched, "city_match_found": bool(matched)}, None
 
         elif tool_name == "find_analogs":
             pid = args.get("product_id")
-            detail = ekt_client.get_product_detail(pid) or {"id": pid, "name": "Электротовары"}
+            detail = ekt_client.get_product_detail(pid)
+            if not detail:
+                return [], None
             analogs = ekt_client.find_analogs(detail, limit=3)
             return analogs, None
 
@@ -229,21 +256,37 @@ class AgentService:
 
         elif tool_name == "add_to_cart_confirmed":
             pid = args.get("product_id")
-            qty = args.get("quantity", 1)
-            confirmed = args.get("user_confirmed", False)
+            try:
+                qty = int(args.get("quantity", 1))
+            except (TypeError, ValueError):
+                qty = 0
+            confirmed = server_confirmed and args.get("user_confirmed", False)
             
-            if not confirmed:
+            offer = self.pending_offers.get(session_id)
+            if (
+                not confirmed or not offer
+                or time.time() - float(offer.get("created_at", 0)) > 600
+                or int(offer.get("product_id", -1)) != int(pid or -2)
+                or int(offer.get("quantity", 0)) != qty
+            ):
                 return {"status": "rejected", "message": "Товар НЕ добавлен: требуется явное подтверждение клиента."}, None
 
-            detail = ekt_client.get_product_detail(pid)
+            if qty < 1:
+                return {"status": "error", "message": "Количество должно быть не меньше 1."}, None
+
+            detail = ekt_client.get_product_detail(pid, force_refresh=True)
             if not detail:
                 return {"status": "error", "message": "Товар не найден в каталоге ekt.kz."}, None
 
             available_stock = detail.get("quantity", 0)
-            if available_stock <= 0:
+            if not detail.get("stock_verified") or available_stock <= 0:
                 return {"status": "error", "message": "Товара нет в наличии, добавление невозможно. Предложите аналог."}, None
 
-            final_qty = min(qty, available_stock)
+            existing = next((i for i in cart_store.get(session_id, []) if int(i.get("product_id", -1)) == int(pid)), None)
+            remaining = max(0, int(available_stock) - int(existing.get("quantity", 0) if existing else 0))
+            if qty > remaining:
+                return {"status": "error", "message": f"Можно добавить не более {remaining} шт. по текущему остатку."}, None
+            final_qty = qty
             
             # Perform mutation
             cart_item = {
@@ -258,20 +301,43 @@ class AgentService:
             if session_id not in cart_store:
                 cart_store[session_id] = []
             
-            existing = next((i for i in cart_store[session_id] if i["product_id"] == pid), None)
             if existing:
-                existing["quantity"] = min(existing["quantity"] + final_qty, available_stock)
+                existing["quantity"] += final_qty
             else:
                 cart_store[session_id].append(cart_item)
+            self.pending_offers.pop(session_id, None)
 
             cart_mutation = {
                 "item": cart_item,
                 "total_items": len(cart_store[session_id]),
                 "cart_url": "https://ekt.kz/personal/cart/"
             }
+            total_quantity = sum(int(item.get("quantity", 0)) for item in cart_store[session_id])
+            confirmation = {
+                "product_name": detail["name"],
+                "article": detail.get("article", "Н/Д"),
+                "price": detail.get("price", 0),
+                "quantity_added": final_qty,
+                "stock_available": available_stock,
+                "cart_items_count": total_quantity,
+                "cart_url": "https://ekt.kz/personal/cart/",
+                "cart_mode": "demo",
+            }
+            answer = (
+                "✅ Товар добавлен в демонстрационную корзину.\n\n"
+                f"📦 {detail['name']}\n"
+                f"🔢 Артикул: {detail.get('article', 'Н/Д')}\n"
+                f"💰 Цена: {detail.get('price', 0):,} ₸\n"
+                f"📊 Добавлено: {final_qty} шт. · Проверенный остаток: {available_stock} шт.\n"
+                f"🛒 В корзине: {total_quantity} шт.\n"
+                f"🔗 Корзина ekt.kz: https://ekt.kz/personal/cart/"
+            )
+            cart_mutation["cart_confirmation"] = confirmation
             return {
                 "status": "success",
-                "message": f"Товар '{detail['name']}' ({final_qty} шт.) успешно добавлен в корзину!",
+                "message": answer,
+                "answer": answer,
+                "cart_confirmation": confirmation,
                 "cart_url": "https://ekt.kz/personal/cart/"
             }, cart_mutation
 
@@ -319,6 +385,66 @@ class AgentService:
             # Smart Offline Mock Mode (Zero-failure guarantee for hackathon judges)
             return self._offline_smart_agent(message, cart_store, session_id, reasoning_steps)
 
+        # A model cannot treat an unrelated "yes" as permission to mutate a cart.
+        pending = self.pending_offers.get(session_id)
+        if pending and time.time() - float(pending.get("created_at", 0)) > 600:
+            self.pending_offers.pop(session_id, None)
+            pending = None
+        if self._is_explicit_confirmation(message) and pending:
+            requested_quantity = self._confirmation_quantity(message)
+            if requested_quantity is not None and requested_quantity != pending["quantity"]:
+                return {
+                    "answer": f"Было предложено {pending['quantity']} шт. Подтвердите это количество или выберите другое на карточке товара.",
+                    "reasoning_steps": reasoning_steps,
+                    "cart_updated": False,
+                    "cart_items_count": sum(int(item.get("quantity", 0)) for item in cart_store.get(session_id, [])),
+                    "cart_url": "https://ekt.kz/personal/cart/",
+                    "sources": [],
+                }
+            result, mutation = self.execute_tool(
+                "add_to_cart_confirmed",
+                {"product_id": pending["product_id"], "quantity": pending["quantity"], "user_confirmed": True},
+                cart_store,
+                session_id,
+                server_confirmed=True,
+            )
+            reasoning_steps.append({
+                "step_number": len(reasoning_steps) + 1,
+                "type": "tool_call",
+                "tool_name": "add_to_cart_confirmed",
+                "tool_input": {"product_id": pending["product_id"], "quantity": pending["quantity"]},
+                "tool_output": result,
+                "message": "Подтверждение сопоставлено с предложенным товаром и проверено по остатку.",
+            })
+            if mutation:
+                return {
+                    "answer": result["answer"],
+                    "reasoning_steps": reasoning_steps,
+                    "cart_updated": True,
+                    "cart_items_count": sum(int(item.get("quantity", 0)) for item in cart_store.get(session_id, [])),
+                    "cart_url": result["cart_url"],
+                    "sources": [mutation["item"]],
+                }
+            return {
+                "answer": result.get("message", "Не удалось обновить корзину."),
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(cart_store.get(session_id, [])),
+                "cart_url": "https://ekt.kz/personal/cart/",
+                "sources": [],
+            }
+        if self._is_explicit_confirmation(message) and not pending:
+            return {
+                "answer": "Не нашёл в этой сессии товар, который нужно добавить. Сначала выберите товар из результата поиска.",
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(cart_store.get(session_id, [])),
+                "cart_url": "https://ekt.kz/personal/cart/",
+                "sources": [],
+            }
+        if pending and not self._is_explicit_confirmation(message):
+            self.pending_offers.pop(session_id, None)
+
         # Build OpenAI Messages
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for h in history[-6:]:
@@ -339,6 +465,7 @@ class AgentService:
             # Process tool calls if any
             if resp_msg.tool_calls:
                 messages.append(resp_msg)
+                rejected_cart_message = None
                 for tool_call in resp_msg.tool_calls:
                     fn_name = tool_call.function.name
                     fn_args = json.loads(tool_call.function.arguments or "{}")
@@ -352,6 +479,8 @@ class AgentService:
                     })
 
                     tool_output, mutation = self.execute_tool(fn_name, fn_args, cart_store, session_id)
+                    if fn_name == "add_to_cart_confirmed" and not mutation:
+                        rejected_cart_message = tool_output.get("message", "Товар не добавлен: требуется явное подтверждение.")
                     if mutation:
                         cart_updated = True
                         cart_url = mutation.get("cart_url")
@@ -377,16 +506,39 @@ class AgentService:
                     temperature=0.3
                 )
                 final_answer = second_resp.choices[0].message.content
+                if rejected_cart_message:
+                    final_answer = rejected_cart_message
             else:
                 final_answer = resp_msg.content
 
             current_cart = cart_store.get(session_id, [])
+            sources = []
+            analogs_by_product = {}
+            for tool_call in resp_msg.tool_calls or []:
+                fn_name = tool_call.function.name
+                try:
+                    fn_args = json.loads(tool_call.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    continue
+                if fn_name == "get_product_detail":
+                    detail = ekt_client.get_product_detail(fn_args.get("product_id"))
+                    if detail:
+                        sources.append(detail)
+                        self.pending_offers[session_id] = {"product_id": detail["id"], "quantity": 1, "created_at": time.time()}
+                elif fn_name == "find_analogs":
+                    detail = ekt_client.get_product_detail(fn_args.get("product_id"))
+                    if detail:
+                        analogs_by_product[int(fn_args["product_id"])] = ekt_client.find_analogs(detail, limit=3)
+            for source in sources:
+                if source.get("id") is not None:
+                    source["analogs"] = analogs_by_product.get(int(source["id"]), [])
             return {
                 "answer": final_answer,
                 "reasoning_steps": reasoning_steps,
                 "cart_updated": cart_updated,
                 "cart_items_count": len(current_cart),
-                "cart_url": cart_url or "https://ekt.kz/personal/cart/"
+                "cart_url": cart_url or "https://ekt.kz/personal/cart/",
+                "sources": sources,
             }
 
         except Exception as e:
@@ -405,6 +557,13 @@ class AgentService:
         cart_updated = False
         cart_url = None
         current_cart = cart_store.get(session_id, [])
+
+        pending = self.pending_offers.get(session_id)
+        if pending and time.time() - float(pending.get("created_at", 0)) > 600:
+            self.pending_offers.pop(session_id, None)
+            pending = None
+        if pending and not self._is_explicit_confirmation(message):
+            self.pending_offers.pop(session_id, None)
 
         # Scenario 0A: B2B, VAT & Invoice Inquiry (RAG)
         if any(w in msg for w in ["счет", "ндс", "юрлиц", "тоо", "эсф", "бухгалтер", "договор", "закрывающ"]):
@@ -507,55 +666,47 @@ class AgentService:
             }
 
         # Scenario 2: Explicit Add to Cart Confirmation
-        if any(w in msg for w in ["да, добавь", "добавь в корзину", "добавляй", "беру", "иә, себетке сал"]):
-            products = ekt_client.search_products("Legrand", limit=5)
-            # Find first item with stock > 0
-            target = None
-            target_detail = None
-            for p in products:
-                d = ekt_client.get_product_detail(p["id"])
-                if d and d.get("quantity", 0) > 0:
-                    target = p
-                    target_detail = d
-                    break
-            
-            if not target:
-                # Use default known in-stock item (e.g. 515291 with stock 23)
-                target_detail = ekt_client.get_product_detail(515291)
-                target = target_detail
-
-            if target_detail:
-                _, mutation = self.execute_tool(
-                    "add_to_cart_confirmed",
-                    {"product_id": target_detail["id"], "quantity": 1, "user_confirmed": True},
-                    cart_store,
-                    session_id
-                )
-                cart_updated = True
-                cart_url = "https://ekt.kz/personal/cart/"
-                reasoning_steps.append({
-                    "step_number": len(reasoning_steps) + 1,
-                    "type": "tool_call",
-                    "tool_name": "add_to_cart_confirmed",
-                    "tool_input": {"product_id": target_detail["id"], "quantity": 1, "user_confirmed": True},
-                    "message": f"Клиент подтвердил добавление. Товар {target_detail['name']} (1 шт.) добавлен в корзину."
-                })
-                answer = (
-                    f"✅ **Товар успешно добавлен в вашу корзину!**\n\n"
-                    f"📦 **{target_detail['name']}**\n"
-                    f"🔢 Артикул: `{target_detail.get('article', '200300285_')}`\n"
-                    f"💰 Цена: **{target_detail.get('price', 64920):,} ₸**\n"
-                    f"📊 Добавлено: 1 шт. (Доступный остаток: {target_detail.get('quantity', 23)} шт.)\n\n"
-                    f"🛒 **Всего в корзине:** {len(cart_store.get(session_id, []))} позиция\n"
-                    f"🔗 **[Перейти к оформлению заказа в корзине]({cart_url})**"
-                )
+        if self._is_explicit_confirmation(message):
+            offer = self.pending_offers.get(session_id)
+            if offer and time.time() - float(offer.get("created_at", 0)) > 600:
+                self.pending_offers.pop(session_id, None)
+                offer = None
+            if not offer:
                 return {
-                    "answer": answer,
+                    "answer": "Не нашёл товар, предложенный для добавления. Сначала найдите товар, затем подтвердите его добавление.",
                     "reasoning_steps": reasoning_steps,
-                    "cart_updated": True,
-                    "cart_items_count": len(cart_store.get(session_id, [])),
-                    "cart_url": cart_url
+                    "cart_updated": False,
+                    "cart_items_count": len(current_cart),
+                    "cart_url": "https://ekt.kz/personal/cart/",
+                    "sources": [],
                 }
+            requested_quantity = self._confirmation_quantity(message)
+            if requested_quantity is not None and requested_quantity != offer["quantity"]:
+                return {
+                    "answer": f"Было предложено {offer['quantity']} шт. Подтвердите это количество или выберите другое на карточке товара.",
+                    "reasoning_steps": reasoning_steps,
+                    "cart_updated": False,
+                    "cart_items_count": sum(int(item.get("quantity", 0)) for item in current_cart),
+                    "cart_url": "https://ekt.kz/personal/cart/",
+                    "sources": [],
+                }
+            result, mutation = self.execute_tool(
+                "add_to_cart_confirmed",
+                {"product_id": offer["product_id"], "quantity": offer["quantity"], "user_confirmed": True},
+                cart_store,
+                session_id,
+                server_confirmed=True,
+            )
+            if mutation:
+                return {
+                    "answer": result["answer"],
+                    "reasoning_steps": reasoning_steps + [{"step_number": len(reasoning_steps) + 1, "type": "tool_call", "tool_name": "add_to_cart_confirmed", "tool_input": offer, "message": "Добавление подтверждено и проверено по остатку."}],
+                    "cart_updated": True,
+                    "cart_items_count": sum(int(item.get("quantity", 0)) for item in cart_store.get(session_id, [])),
+                    "cart_url": result["cart_url"],
+                    "sources": [mutation["item"]],
+                }
+            return {"answer": result.get("message", "Не удалось добавить товар."), "reasoning_steps": reasoning_steps, "cart_updated": False, "cart_items_count": len(current_cart), "cart_url": "https://ekt.kz/personal/cart/", "sources": []}
 
         # Scenario 3: Product Search & Out of Stock / Analog test
         reasoning_steps.append({
@@ -566,70 +717,90 @@ class AgentService:
             "message": f"Поиск в онлайн-каталоге ekt.kz по запросу: '{message}'"
         })
         items = ekt_client.search_products(message, limit=2)
-        
-        if not items:
-            items = ekt_client.search_products("автомат", limit=2)
-
         main_item = items[0] if items else None
-        if main_item:
-            detail = ekt_client.get_product_detail(main_item["id"]) or main_item
-            stock = detail.get("quantity", 0)
-            
-            # If stock == 0, trigger analog lookup (Must Have criterion 2)
-            if stock == 0:
-                reasoning_steps.append({
-                    "step_number": len(reasoning_steps) + 1,
-                    "type": "tool_call",
-                    "tool_name": "find_analogs",
-                    "tool_input": {"product_id": main_item["id"]},
-                    "message": "Позиция с нулевым остатком. Подбор релевантных аналогов из наличия."
-                })
-                analogs = ekt_client.find_analogs(detail, limit=1)
-                analog_text = ""
-                if analogs:
-                    an = analogs[0]
-                    analog_text = (
-                        f"\n\n⚠️ **Позиция временно отсутствует на складе (остаток: 0 шт.).**\n"
-                        f"💡 **Рекомендуемый аналог в наличии:**\n"
-                        f"🔹 **{an['name']}** (Арт: `{an.get('article', 'Н/Д')}`)\n"
-                        f"💰 Цена: {an.get('price', 0):,} ₸ | Остаток: {an.get('quantity', 1)} шт.\n"
-                        f"📌 *Обоснование:* {an['rationale']}\n"
-                    )
-
-                answer = (
-                    f"🔎 По вашему запросу найден товар:\n"
-                    f"**{detail['name']}**\n"
-                    f"Артикул: `{detail.get('article', 'Н/Д')}`\n"
-                    f"Цена: {detail.get('price', 0):,} ₸\n"
-                    f"{analog_text}\n"
-                    f"Желаете добавить предложенный аналог в корзину? (Ответьте *'Да, добавь'* для подтверждения)."
-                )
-            else:
-                stores_summary = ", ".join([f"{s['name']}: {s['quantity']} шт." for s in detail.get("stores", []) if s.get("quantity", 0) > 0][:3])
-                answer = (
-                    f"🔎 **Информация о товаре в ekt.kz:**\n\n"
-                    f"📌 **{detail['name']}**\n"
-                    f"🔢 Артикул: `{detail.get('article', 'Н/Д')}`\n"
-                    f"💰 Цена: **{detail.get('price', 0):,} ₸**\n"
-                    f"📦 Наличие на складах: **{stock} шт.** ({stores_summary or 'Склады Астана, Алматы'})\n"
-                    f"📄 Сертификаты: Сертификат соответствия ТР ТС (действителен, предоставляется при отгрузке).\n\n"
-                    f"🛒 **Добавить этот товар (1 шт.) в корзину?** Напишите *'Да, добавь'*, и я обновлю вашу корзину."
-                )
-            
+        if not main_item:
             return {
-                "answer": answer,
+                "answer": "Не нашёл подходящую позицию в доступной части каталога. Проверьте артикул или уточните название товара.",
                 "reasoning_steps": reasoning_steps,
                 "cart_updated": False,
                 "cart_items_count": len(current_cart),
-                "cart_url": "https://ekt.kz/personal/cart/"
+                "cart_url": "https://ekt.kz/personal/cart/",
+                "sources": [],
             }
+
+        detail = ekt_client.get_product_detail(main_item["id"], force_refresh=True)
+        if not detail or not detail.get("stock_verified"):
+            return {
+                "answer": f"Нашёл позицию «{main_item.get('name', 'из каталога')}», но не удалось проверить её карточку и актуальный остаток. Повторите запрос позже.",
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(current_cart),
+                "cart_url": "https://ekt.kz/personal/cart/",
+                "sources": [],
+            }
+        stock = int(detail["quantity"])
+        analogs = []
+        if stock == 0:
+            reasoning_steps.append({
+                "step_number": len(reasoning_steps) + 1,
+                "type": "tool_call",
+                "tool_name": "find_analogs",
+                "tool_input": {"product_id": main_item["id"]},
+                "message": "Позиция с нулевым остатком. Ищу аналоги с подтверждённым наличием.",
+            })
+            analogs = ekt_client.find_analogs(detail, limit=1)
+            if analogs:
+                self.pending_offers[session_id] = {"product_id": analogs[0]["id"], "quantity": 1, "created_at": time.time()}
+            analog_text = ""
+            if analogs:
+                analog = analogs[0]
+                analog_text = (
+                    f"\n\n⚠️ Исходной позиции нет в наличии.\n"
+                    f"💡 Аналог: {analog['name']} (арт. {analog.get('article', 'Н/Д')})\n"
+                    f"Цена: {analog.get('price', 0):,} ₸ · Остаток: {analog.get('quantity', 0)} шт.\n"
+                    f"Почему подходит: {analog['rationale']}\n"
+                )
+                prompt = "Желаете добавить предложенный аналог в корзину? Ответьте «Да, добавь»."
+            else:
+                prompt = "Не нашёл аналог с подтверждённым положительным остатком. Могу передать запрос менеджеру."
+            answer = (
+                f"🔎 По вашему запросу найден товар: {detail['name']}\n"
+                f"Артикул: {detail.get('article', 'Н/Д')} · Цена: {detail.get('price', 0):,} ₸\n"
+                f"{analog_text}\n{prompt}"
+            )
+        else:
+            self.pending_offers[session_id] = {"product_id": detail["id"], "quantity": 1, "created_at": time.time()}
+            stores_summary = ", ".join(f"{store['name']}: {store['quantity']} шт." for store in detail.get("stores", []) if store.get("quantity", 0) > 0)
+            specs = ", ".join(f"{spec['name']}: {spec['value']}" for spec in detail.get("specifications", []))
+            cert = detail.get("certificate_url")
+            cert_text = f"\nСертификат: {cert}" if cert else "\nСсылка на сертификат в API не указана."
+            warnings = "\n⚠️ " + "\n⚠️ ".join(detail.get("data_quality_warnings", [])) if detail.get("data_quality_warnings") else ""
+            answer = (
+                f"🔎 Информация о товаре ekt.kz:\n"
+                f"📦 {detail['name']}\n"
+                f"Артикул: {detail.get('article', 'Н/Д')} · Цена: {detail.get('price', 0):,} ₸\n"
+                f"Остаток: {stock} шт. ({stores_summary or 'распределение по складам не указано'})\n"
+                f"Характеристики: {specs or detail.get('description', 'в API не указаны')}"
+                f"{warnings}{cert_text}\n\n"
+                "Добавить этот товар (1 шт.) в корзину? Ответьте «Да, добавь»."
+            )
+
+        return {
+            "answer": answer,
+            "reasoning_steps": reasoning_steps,
+            "cart_updated": False,
+            "cart_items_count": len(current_cart),
+            "cart_url": "https://ekt.kz/personal/cart/",
+            "sources": [{**detail, "analogs": analogs}],
+        }
 
         return {
             "answer": "Здравствуйте! Я ИИ-консультант ekt.kz. Назовите нужную электротехническую продукцию (автоматы, кабель, светильники) или артикул, и я подскажу характеристики и остатки.",
             "reasoning_steps": reasoning_steps,
             "cart_updated": False,
             "cart_items_count": len(current_cart),
-            "cart_url": "https://ekt.kz/personal/cart/"
+            "cart_url": "https://ekt.kz/personal/cart/",
+            "sources": [],
         }
 
 agent_service = AgentService()

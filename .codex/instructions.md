@@ -12,7 +12,7 @@
 - **Backend**: Python 3.11+, FastAPI, Uvicorn, Pydantic v2, HTTPX / Requests
 - **Agent**: OpenAI Function Calling (Tools) with structured JSON reasoning trace
 - **Frontend**: Vite / React 19 or Next.js, Tailwind CSS, Lucide icons
-- **Data Source**: Live ekt.kz Partner API with BasicAuth (`apiuser` / `ApiEkt!2026`)
+- **Data Source**: Live ekt.kz Partner API with Basic Auth (credentials from environment variables)
   - List: `https://ekt.kz/api/products?page={page}`
   - Detail: `https://ekt.kz/api/products/detail?id={id}`
 

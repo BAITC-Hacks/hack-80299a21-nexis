@@ -46,7 +46,7 @@ flowchart TB
     end
 
     subgraph EktIntegration ["Интеграция с инфраструктурой ekt.kz"]
-        EktAPI["Живой API ekt.kz (BasicAuth: apiuser)"]
+        EktAPI["Живой API ekt.kz (Basic Auth, credentials from environment variables)"]
         EktCart["Родная корзина ekt.kz (https://ekt.kz/personal/cart/)"]
         ManagerEscalate["Шлюз эскалации на живого менеджера"]
     end

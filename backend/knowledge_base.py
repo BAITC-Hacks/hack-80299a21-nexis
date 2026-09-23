@@ -105,4 +105,4 @@ def search_knowledge_base(query: str, limit: int = 2) -> List[Dict[str, Any]]:
     scored.sort(key=lambda x: x[0], reverse=True)
     if scored:
         return [item for _, item in scored[:limit]]
-    return [KB_ARTICLES[0]]  # Default fallback
+    return []

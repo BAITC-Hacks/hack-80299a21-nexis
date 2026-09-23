@@ -1,7 +1,7 @@
 # 📜 API Contract — Backend & Frontend (SSOT)
 
 > **Host**: `http://localhost:8000` (or local IP during hackathon)  
-> **CORS**: Enabled for all origins (`*`)
+> **CORS**: `http://localhost:3000` and `http://localhost:5173`
 
 ---
 
@@ -49,7 +49,22 @@
   "cart_updated": false,
   "cart_items_count": 0,
   "cart_url": "https://ekt.kz/personal/cart/",
-  "sources": []
+  "sources": [
+    {
+      "id": 515291,
+      "name": "027228 АВ DRX250 MT 3ф 160А 18ka Legrand (1)",
+      "article": "200300285_",
+      "price": 64920,
+      "quantity": 23,
+      "stock_verified": true,
+      "stores": [{"id": 24, "name": "Нур-Султан", "quantity": 8}],
+      "specifications": [{"name": "Количество полюсов", "value": "3"}],
+      "certificate_url": null,
+      "data_quality_warnings": [],
+      "image": "https://ekt.kz/upload/iblock/...",
+      "url": "https://ekt.kz/catalog/..."
+    }
+  ]
 }
 ```
 
@@ -61,7 +76,8 @@
 ```json
 {
   "page": 1,
-  "total": 40,
+  "total": 80,
+  "data_source": "ekt.kz",
   "items": [
     {
       "id": 515291,
@@ -120,4 +136,31 @@
 
 ## 6. Cart Endpoints
 - **Get Cart**: `GET /api/cart?session_id=session_user_123`
+- **Prepare Offer**: `POST /api/cart/offer?session_id=session_user_123` with `{"product_id":515291,"quantity":2}`. The server checks current product, price, and stock, then returns a one-time `offer_token` bound to this session, product, and quantity for 10 minutes. The UI shows these verified terms and asks for a separate confirmation.
 - **Add to Cart**: `POST /api/cart/add?session_id=session_user_123`
+- The add request is an explicit confirmation action and must contain the selected catalog product id, requested quantity, `confirmed: true`, and the token from the offer response:
+```json
+{"product_id": 515291, "quantity": 2, "confirmed": true, "offer_token": "one-time-token"}
+```
+- The token must match the session, product id, and exact quantity and can be used once. Product name, article, image, price, and availability are re-read from ekt.kz by the backend. A missing live detail returns `503`; a stale/insufficient stock or missing confirmation returns `409`. The session cart is an in-memory demo cart (`cart_mode: "demo"`) and is not synchronized with the ekt.kz account cart.
+- A successful response includes `answer` (the verified item name, article, price, quantity, available stock, cart count, and cart URL) and `cart_confirmation` with structured values for the frontend.
+
+## 7. Specification Upload
+- **Endpoint**: `POST /api/agent/upload-spec` (`multipart/form-data`, field `file`)
+- **Supported formats**: PDF, TXT, DOCX, XLSX, XLS, JPG, JPEG, PNG, WEBP; maximum 15 MB. Image parsing also requires the Tesseract OCR executable with Russian and English language data installed on the backend host.
+- **Response**:
+```json
+{
+  "status": "success",
+  "filename": "sample.pdf",
+  "content_type": "application/pdf",
+  "estimate": {
+    "total_positions_found": 1,
+    "total_estimate_kzt": 64920,
+    "matched_items": [],
+    "unmatched_items": [],
+    "summary_text": "..."
+  }
+}
+```
+- The estimate is preliminary. Unmatched lines and unverified stock are reported instead of being treated as available.
