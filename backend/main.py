@@ -1,11 +1,12 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from agent_service import agent_service
 from ekt_client import ekt_client
 from knowledge_base import KB_ARTICLES, search_knowledge_base
+from spec_parser import spec_parser
 
 app = FastAPI(
     title="NEXIS - ekt.kz Agentic AI Assistant",
@@ -197,15 +198,18 @@ def agent_chat(request: AgentQueryRequest):
     )
 
 @app.post("/api/agent/upload-spec")
-async def upload_specification(file: bytes = None):
+async def upload_specification(file: UploadFile = File(...)):
     """
     Multimodal entry point: Accepts specification documents (PDF / text)
-    and extracts electrical articles for instant catalog check.
+    and extracts electrical articles for instant catalog check and estimate calculation.
     """
+    content = await file.read()
+    result = spec_parser.parse_specification(content)
     return {
         "status": "success",
-        "message": "Спецификация принята к обработке агентом ekt.kz",
-        "extracted_items": ["027228", "45357"]
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "estimate": result
     }
 
 if __name__ == "__main__":

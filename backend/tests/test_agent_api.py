@@ -109,5 +109,20 @@ class TestAgentAPI(unittest.TestCase):
         self.assertGreaterEqual(cart_data["total_items"], 1)
         self.assertGreater(cart_data["total_sum"], 0)
 
+    def test_upload_specification_pdf(self):
+        pdf_path = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "sample_specification.pdf")
+        if os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as f:
+                response = self.client.post(
+                    "/api/agent/upload-spec",
+                    files={"file": ("sample_specification.pdf", f, "application/pdf")}
+                )
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["status"], "success")
+            self.assertIn("estimate", data)
+            self.assertGreater(data["estimate"]["total_positions_found"], 0)
+            self.assertGreater(data["estimate"]["total_estimate_kzt"], 0)
+
 if __name__ == "__main__":
     unittest.main()
