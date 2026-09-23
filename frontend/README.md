@@ -43,6 +43,10 @@ model keys in VITE_ variables: they are public browser configuration.
   verification dates where provided. Additional `clarification.message` is shown
   when it is not already in the answer. Source HTML is escaped, links are checked
   and duplicate chunks from the same source/page are collapsed.
+- Optional `comparison` responses display a horizontally scrollable table of
+  verified product facts, using the server's localized parameter labels. Same,
+  different and insufficient-data indicators are translated; null values remain
+  unknown. All cell content uses text nodes. Comparing products adds no cart actions.
 - `answer_language` marks the returned message language; `request_id` is retained
   as the message element's `data-request-id` for support. Raw diagnostics, model
   traces and tool JSON are not displayed in customer messages. The timeline shows
@@ -78,10 +82,10 @@ layout; product consultation uses only actual API data.
     npm run typecheck
     npm run build
 
-The unit suite (37 cases) covers session creation/reuse, 401 recovery without write
+The unit suite (41 cases) covers session creation/reuse, 401 recovery without write
 replay, multipart transport, API errors, all-language headers, language switching
 without a new session, keyed specifications, preserved facts, source/clarification
-rendering, escaped content and unknown or unverified values. Browser end-to-end
+rendering, comparison tables, escaped content and unknown or unverified values. Browser end-to-end
 checks are separate; unit results do not establish model answer quality.
 
 ## Production container

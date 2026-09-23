@@ -7,6 +7,7 @@ import { ApiClient, apiLanguage } from './chat/api';
 import { canOffer, formatSpecifications, normaliseProduct, offeredQuantity } from './chat/products';
 import { storedLanguage } from './chat/localization';
 import { renderClarification, renderKnowledgeSources } from './chat/response';
+import { renderComparison } from './chat/comparison';
 import { applyStorefrontLanguage } from './chat/storefront';
 import type { Cart, CartResult, ChatResponse, HistoryMessage, Language, Offer, Product, ProductSource, ReasoningStep, UploadResponse } from './chat/types';
 
@@ -269,6 +270,13 @@ async function showChat(text: string) {
   if (data.pending_offer) content += inlineOffer(data.pending_offer);
   if (data.cart_updated && data.cart_url) content += safeLink(data.cart_url, t().checkout, 'certificate-link');
   const reply = appendMessage(content);
+  const comparison = renderComparison(data.comparison, t());
+  const bubble = reply.querySelector('.message-bubble');
+  if (comparison && bubble) {
+    const next = bubble.querySelector('.product-card, .knowledge-sources, .pending-offer');
+    bubble.insertBefore(comparison, next);
+    scrollBottom();
+  }
   if (data.answer_language) reply.lang = data.answer_language;
   // A request ID is enough to correlate a report with backend diagnostics; no session token is exposed.
   if (data.request_id) reply.dataset.requestId = data.request_id;

@@ -27,10 +27,15 @@ export interface Offer {
 }
 export interface KnowledgeSource { id?: string; source_id?: string; chunk_id?: string; title: string; source_url?: string | null; verified_at?: string | null; verification_status?: string; language?: ApiLanguage; version?: string; page?: number | null; score?: number }
 export interface Clarification { kind: string; missing_fields: string[]; message: string }
+export interface ProductComparison {
+  products: { id: number; name: string }[];
+  rows: { key: string; label: string; values: (string | null)[]; same: boolean }[];
+}
 export interface ChatResponse {
   answer: string; cart_updated?: boolean; reasoning_steps?: ReasoningStep[]; sources?: ProductSource[];
   pending_offer?: Offer | null; cart_url?: string; knowledge_sources?: KnowledgeSource[]; warnings?: string[]; warning_codes?: string[];
   answer_language?: ApiLanguage; request_id?: string; clarification?: Clarification | null;
+  comparison?: ProductComparison | null;
   diagnostics?: { mode?: string; elapsed_ms?: number; fallback_reason?: string | null; retrieval_mode?: string; retrieval?: { mode?: string } };
 }
 export interface CartResult { answer?: string; message?: string; cart: CartItem[] | Cart; cart_url: string; success: boolean }

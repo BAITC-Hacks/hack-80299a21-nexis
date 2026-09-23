@@ -357,3 +357,14 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .knowledge-sources small { display: block; color: #a5b8cc; margin-top: 3px; }
 .clarification { margin-top: 12px; padding: 10px 12px; border-left: 3px solid #16a34a; background: #f0fdf4; color: #143247; border-radius: 6px; }
 .clarification p { margin-bottom: 0; }
+.product-comparison { max-width: 100%; overflow-x: auto; margin: 14px 0; border: 1px solid #3c536b; border-radius: 10px; }
+.product-comparison:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
+.product-comparison table { border-collapse: collapse; width: 100%; min-width: 380px; font-size: 12px; }
+.product-comparison caption { text-align: left; font-weight: 700; padding: 10px; color: #e2e8f0; }
+.product-comparison th, .product-comparison td { min-width: 110px; max-width: 240px; padding: 10px; border-top: 1px solid #3c536b; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.product-comparison th { font-weight: 600; }
+.product-comparison thead { background: #152a40; }
+.comparison-indicator { display: block; margin-top: 5px; font-weight: 400; }
+.comparison-same .comparison-indicator { color: #86efac; }
+.comparison-different .comparison-indicator { color: #fcd34d; }
+.comparison-incomplete .comparison-indicator, .comparison-unknown { color: #b6c6d7; }
