@@ -27,20 +27,21 @@ export function normaliseProduct(source: ProductSource, language: Language = 'ru
   return {
     id, name: source.name || productFallback(language), article: source.article || '—', brand: source.brand || 'ekt.kz',
     price, stock, priceVerified: source.price_verified === true && price !== null,
-    stockVerified: source.stock_verified === true && stock !== null, unit: source.unit || unitFallback(language),
+    stockVerified: source.stock_verified === true && stock !== null,
+    unit: source.unit_display || source.unit || unitFallback(language), originalUnit: source.unit || null,
     specifications: formatSpecifications(Array.isArray(source.specifications) ? source.specifications : [], language),
     specificationEntries: Array.isArray(source.specifications) ? source.specifications : [],
     certificateUrl: productUrl(source.certificate_url), image: productUrl(source.image), url: productUrl(source.url),
     rationale: source.rationale || '', analogs: (source.analogs || []).map((item) => normaliseProduct(item, language)).filter((p): p is Product => !!p),
     stores: (source.stores || []).map((store) => ({ ...store, quantity: nullableNumber(store.quantity) })),
     checkedAt: source.last_checked_at || null, warnings: source.data_quality_warnings || [],
-    minimum: Math.max(1, nullableNumber(source.min_order_quantity) || 1),
-    multiple: Math.max(1, nullableNumber(source.order_multiple) || 1),
+    minimum: nullableNumber(source.min_order_quantity) || null,
+    multiple: nullableNumber(source.order_multiple) || null,
   };
 }
 
 export function canOffer(product: Product): boolean {
-  return product.priceVerified && product.stockVerified && product.price !== null && product.price > 0 && product.stock !== null && product.stock >= product.minimum;
+  return product.priceVerified && product.stockVerified && product.price !== null && product.price > 0 && product.stock !== null && product.stock >= Math.max(1, product.minimum ?? 1);
 }
 
 /** Keep a product card aligned with the exact quantity proposed by the agent. */

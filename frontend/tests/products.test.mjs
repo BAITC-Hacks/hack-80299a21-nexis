@@ -62,3 +62,22 @@ test('stable specification keys translate labels without altering names, values 
     assert.deepEqual(product.specificationEntries, source.specifications);
   }
 });
+
+test('localized unit display preserves the catalog unit for English and Kazakh upload cards', () => {
+  for (const [language, display] of [['en', 'pcs'], ['kz', 'дана']]) {
+    const product = normaliseProduct({ product_id: 1001, unit: 'шт.', unit_display: display }, language);
+    assert.equal(product.unit, display);
+    assert.equal(product.originalUnit, 'шт.');
+  }
+  assert.equal(normaliseProduct({ id: 1, unit: 'custom unit' }, 'en').unit, 'custom unit');
+});
+test('unknown packaging is retained as unknown while offer requests still require server validation', () => {
+  const product = normaliseProduct({ id: 1, price: 20, quantity: 5, price_verified: true, stock_verified: true,
+    min_order_quantity: null, order_multiple: null });
+  assert.equal(product.minimum, null);
+  assert.equal(product.multiple, null);
+  assert.equal(canOffer(product), true);
+  const packed = normaliseProduct({ id: 2, min_order_quantity: 10, order_multiple: 5 });
+  assert.equal(packed.minimum, 10);
+  assert.equal(packed.multiple, 5);
+});

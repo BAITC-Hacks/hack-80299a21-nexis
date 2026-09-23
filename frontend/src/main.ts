@@ -119,10 +119,12 @@ function register(source: ProductSource): Product | null {
 }
 function quantityControl(product: Product, requested?: number | null): string {
   if (!canOffer(product)) return '';
-  const initial = requested && requested >= product.minimum ? requested : product.minimum;
+  // One is the integer input floor, not an assertion about unknown packaging rules.
+  const minimum = Math.max(1, product.minimum ?? 1);
+  const initial = requested && requested >= minimum ? requested : minimum;
   return '<div class="quantity-row"><span class="quantity-label">' + t().quantity + '</span><div class="quantity-control" data-quantity-control>' +
     '<button type="button" data-quantity-action="minus" aria-label="' + t().quantityDown + '">−</button>' +
-    '<input type="number" min="' + product.minimum + '" step="' + product.multiple + '" max="' + product.stock + '" value="' + initial + '" inputmode="numeric" aria-label="' + t().quantity + '">' +
+    '<input type="number" min="' + minimum + '" step="' + (product.multiple ?? 1) + '" max="' + product.stock + '" value="' + initial + '" inputmode="numeric" aria-label="' + t().quantity + '">' +
     '<button type="button" data-quantity-action="plus" aria-label="' + t().quantityUp + '">+</button></div></div>' +
     '<button type="button" class="add-cart-button" data-add-cart data-product-id="' + product.id + '">' + t().add + '</button>';
 }

@@ -6,17 +6,17 @@ export interface Store { id?: number; name: string; quantity: number | null }
 export interface ProductSource {
   id?: number | string; product_id?: number | string; name?: string; article?: string; brand?: string;
   price?: number | null; quantity?: number | null; price_verified?: boolean; stock_verified?: boolean;
-  unit?: string; specifications?: (Specification | string)[]; certificate_url?: string | null;
+  unit?: string; unit_display?: string | null; specifications?: (Specification | string)[]; certificate_url?: string | null;
   image?: string | null; url?: string | null; rationale?: string; analogs?: ProductSource[];
   stores?: Store[]; last_checked_at?: string | null; data_quality_warnings?: string[];
   min_order_quantity?: number | null; order_multiple?: number | null;
 }
 export interface Product {
   id: number; name: string; article: string; brand: string; price: number | null; stock: number | null;
-  priceVerified: boolean; stockVerified: boolean; unit: string; specifications: string[];
+  priceVerified: boolean; stockVerified: boolean; unit: string; originalUnit: string | null; specifications: string[];
   specificationEntries: (Specification | string)[];
   certificateUrl: string | null; image: string | null; url: string | null; rationale: string; analogs: Product[];
-  stores: Store[]; checkedAt: string | null; warnings: string[]; minimum: number; multiple: number;
+  stores: Store[]; checkedAt: string | null; warnings: string[]; minimum: number | null; multiple: number | null;
 }
 export interface CartItem { product_id: number; name: string; article?: string; price: number; quantity: number; unit?: string; stock?: number | null; stock_available?: number | null }
 export interface Cart { items: CartItem[]; checkout_url: string | null; total_items?: number; total_sum?: number; cart_mode?: string; stock_reserved?: boolean }
@@ -29,7 +29,7 @@ export interface KnowledgeSource { id?: string; source_id?: string; chunk_id?: s
 export interface Clarification { kind: string; missing_fields: string[]; message: string }
 export interface ChatResponse {
   answer: string; cart_updated?: boolean; reasoning_steps?: ReasoningStep[]; sources?: ProductSource[];
-  pending_offer?: Offer | null; cart_url?: string; knowledge_sources?: KnowledgeSource[]; warnings?: string[];
+  pending_offer?: Offer | null; cart_url?: string; knowledge_sources?: KnowledgeSource[]; warnings?: string[]; warning_codes?: string[];
   answer_language?: ApiLanguage; request_id?: string; clarification?: Clarification | null;
   diagnostics?: { mode?: string; elapsed_ms?: number; fallback_reason?: string | null; retrieval_mode?: string; retrieval?: { mode?: string } };
 }
