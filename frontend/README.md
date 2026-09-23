@@ -39,6 +39,8 @@ model keys in VITE_ variables: they are public browser configuration.
   `unit_display` provides a translated unit label while the original `unit` is
   preserved. Unknown packaging rules remain null; the positive integer input floor
   does not assert a known minimum order, and the server validates every offer.
+  Saved-cart links, including links in earlier confirmations, open in the currently
+  selected language without changing their read token or historical message text.
 - Chat displays cited `knowledge_sources` with source links, page numbers and
   verification dates where provided. Additional `clarification.message` is shown
   when it is not already in the answer. Source HTML is escaped, links are checked
@@ -82,7 +84,7 @@ layout; product consultation uses only actual API data.
     npm run typecheck
     npm run build
 
-The unit suite (41 cases) covers session creation/reuse, 401 recovery without write
+The unit suite (44 cases) covers session creation/reuse, 401 recovery without write
 replay, multipart transport, API errors, all-language headers, language switching
 without a new session, keyed specifications, preserved facts, source/clarification
 rendering, comparison tables, escaped content and unknown or unverified values. Browser end-to-end

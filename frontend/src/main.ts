@@ -8,6 +8,7 @@ import { canOffer, formatSpecifications, normaliseProduct, offeredQuantity } fro
 import { storedLanguage } from './chat/localization';
 import { renderClarification, renderKnowledgeSources } from './chat/response';
 import { renderComparison } from './chat/comparison';
+import { localizedCartUrl, updateCartLinkLanguages } from './chat/cart-links';
 import { applyStorefrontLanguage } from './chat/storefront';
 import type { Cart, CartResult, ChatResponse, HistoryMessage, Language, Offer, Product, ProductSource, ReasoningStep, UploadResponse } from './chat/types';
 
@@ -76,7 +77,7 @@ function toast(message: string, error = false) {
   toastTimer = window.setTimeout(() => { ui.toasts.innerHTML = ''; }, error ? 9000 : 4000);
 }
 function safeLink(url: string | null | undefined, label: string, className = ''): string {
-  const safe = safeExternalUrl(url);
+  const safe = localizedCartUrl(safeExternalUrl(url), language);
   return safe ? '<a class="' + className + '" href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>' : '';
 }
 function renderText(text: string): string {
@@ -149,7 +150,7 @@ function countCart() { return cart.items.reduce((sum, item) => sum + item.quanti
 function renderCart() {
   const count = countCart();
   ui.cartCount.textContent = count > 99 ? '99+' : String(count);
-  ui.cartLink.href = safeExternalUrl(cart.checkout_url) || '#';
+  ui.cartLink.href = localizedCartUrl(safeExternalUrl(cart.checkout_url), language) || '#';
   ui.cartLink.setAttribute('aria-label', t().cart + ': ' + count);
   $('#cart-drawer-count').textContent = count + ' ' + t().units;
   $('#cart-total').textContent = money(cart.total_sum ?? cart.items.reduce((sum, item) => sum + item.quantity * item.price, 0));
@@ -431,6 +432,8 @@ function applyLanguage() {
   refreshLocalizedControls();
   attachmentPreview();
   renderCart();
+  // Historical prose stays intact; opening any saved-cart link follows the current UI preference.
+  updateCartLinkLanguages(ui.messages.querySelectorAll<HTMLAnchorElement>('a[href]'), language);
   updateLauncher();
 }
 function refreshLocalizedControls() {
@@ -501,7 +504,7 @@ ui.checkout.addEventListener('click', async () => {
   ui.checkout.disabled = true;
   try {
     await refreshCart();
-    const url = safeExternalUrl(cart.checkout_url);
+    const url = localizedCartUrl(safeExternalUrl(cart.checkout_url), language);
     if (url && cart.items.length) window.location.assign(url);
   } catch (error) { toast(errorText(error), true); }
   finally { renderCart(); }
