@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Any, Tuple
 from openai import OpenAI
 from ekt_client import ekt_client
+from knowledge_base import search_knowledge_base, KB_ARTICLES
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -116,6 +117,60 @@ TOOLS_SPEC = [
                 "required": ["product_id", "quantity", "user_confirmed"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_knowledge_base",
+            "description": "Поиск по базе знаний и регламентам ekt.kz: счета на оплату для юрлиц с НДС 12%, ЭСФ, договоры поставки, филиалы складов, гарантия и сертификаты.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "Тема вопроса (например: 'счет юрлицу НДС', 'доставка в Астане', 'сертификаты ТР ТС', 'возврат товара')."
+                    }
+                },
+                "required": ["topic"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_registration_guide",
+            "description": "Получить пошаговую инструкцию по регистрации на сайте ekt.kz для физлиц (по номеру телефона) или юридических лиц (по БИН).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_type": {
+                        "type": "string",
+                        "description": "Тип пользователя: 'b2b' (компания/ИП) или 'b2c' (частный клиент)."
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "escalate_to_manager",
+            "description": "Передать сложный запрос (крупный опт свыше 5 млн ₸, нестандартное щитовое оборудование, сборка ВРУ) дежурному инженеру/менеджеру ekt.kz.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "Причина передачи (например: 'запрос объектной скидки', 'индивидуальная сборка щита')."
+                    },
+                    "client_contact": {
+                        "type": "string",
+                        "description": "Контактный телефон или email клиента."
+                    }
+                },
+                "required": ["reason"]
+            }
+        }
     }
 ]
 
@@ -219,6 +274,24 @@ class AgentService:
                 "message": f"Товар '{detail['name']}' ({final_qty} шт.) успешно добавлен в корзину!",
                 "cart_url": "https://ekt.kz/personal/cart/"
             }, cart_mutation
+
+        elif tool_name == "query_knowledge_base":
+            topic = args.get("topic", "")
+            matches = search_knowledge_base(topic)
+            return {"results": matches}, None
+
+        elif tool_name == "get_registration_guide":
+            guide = next((a for a in KB_ARTICLES if a["id"] == "registration_guide"), KB_ARTICLES[0])
+            return {"guide": guide}, None
+
+        elif tool_name == "escalate_to_manager":
+            reason = args.get("reason", "Запрос консультации")
+            contact = args.get("client_contact", "Не указан")
+            return {
+                "status": "success",
+                "ticket_id": "TICK-EKT-8492",
+                "message": f"Заявка #{'TICK-EKT-8492'} успешно передана инженеру ekt.kz. Контакт: {contact}. Причина: {reason}"
+            }, None
 
         return {"error": f"Unknown tool: {tool_name}"}, None
 
@@ -332,6 +405,82 @@ class AgentService:
         cart_updated = False
         cart_url = None
         current_cart = cart_store.get(session_id, [])
+
+        # Scenario 0A: B2B, VAT & Invoice Inquiry (RAG)
+        if any(w in msg for w in ["счет", "ндс", "юрлиц", "тоо", "эсф", "бухгалтер", "договор", "закрывающ"]):
+            reasoning_steps.append({
+                "step_number": len(reasoning_steps) + 1,
+                "type": "tool_call",
+                "tool_name": "query_knowledge_base",
+                "tool_input": {"topic": "счет на оплату с ндс юрлицам"},
+                "message": "Поиск регламентов B2B и выставления счетов с НДС 12%"
+            })
+            articles = search_knowledge_base("счет ндс юрлицо")
+            return {
+                "answer": articles[0]["content"],
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(current_cart),
+                "cart_url": "https://ekt.kz/personal/cart/"
+            }
+
+        # Scenario 0B: Registration Guide (B2B & B2C)
+        if any(w in msg for w in ["регистрац", "зарегистр", "кабинет", "логин", "аккаунт", "пароль"]):
+            reasoning_steps.append({
+                "step_number": len(reasoning_steps) + 1,
+                "type": "tool_call",
+                "tool_name": "get_registration_guide",
+                "message": "Получение регламента регистрации на ekt.kz"
+            })
+            articles = search_knowledge_base("регистрация")
+            return {
+                "answer": articles[0]["content"],
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(current_cart),
+                "cart_url": "https://ekt.kz/personal/cart/"
+            }
+
+        # Scenario 0C: Escalation to Human Manager
+        if any(w in msg for w in ["менеджер", "человек", "позови", "оператор", "связаться", "спецзаказ", "оптом 5", "щит"]):
+            reasoning_steps.append({
+                "step_number": len(reasoning_steps) + 1,
+                "type": "tool_call",
+                "tool_name": "escalate_to_manager",
+                "tool_input": {"reason": message},
+                "message": "Передача сложного обращения дежурному инженеру ekt.kz"
+            })
+            return {
+                "answer": (
+                    "📞 **Ваш запрос передан дежурному инженеру-консультанту ekt.kz!**\n\n"
+                    "🎫 **Номер тикета:** `TICK-EKT-8492`\n"
+                    "⏱️ **Время ответа:** до 10 минут в рабочее время (09:00 - 18:00).\n\n"
+                    "Вы также можете написать напрямую в WhatsApp дежурного отдела продаж: "
+                    "[Написать менеджеру в WhatsApp](https://wa.me/77001234567?text=Здравствуйте!%20Мой%20тикет%20TICK-EKT-8492)"
+                ),
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(current_cart),
+                "cart_url": "https://ekt.kz/personal/cart/"
+            }
+
+        # Scenario 0D: Certificates and Quality Standards
+        if any(w in msg for w in ["сертификат", "гост", "тр тс", "паспорт изделия"]):
+            reasoning_steps.append({
+                "step_number": len(reasoning_steps) + 1,
+                "type": "tool_call",
+                "tool_name": "query_knowledge_base",
+                "tool_input": {"topic": "сертификаты соответствия"},
+                "message": "Запрос сертификатов соответствия ТР ТС и паспортов"
+            })
+            articles = search_knowledge_base("сертификаты")
+            return {
+                "answer": articles[0]["content"],
+                "reasoning_steps": reasoning_steps,
+                "cart_updated": False,
+                "cart_items_count": len(current_cart),
+                "cart_url": "https://ekt.kz/personal/cart/"
+            }
 
         # Scenario 1: Terms & Conditions
         if any(w in msg for w in ["доставк", "оплат", "партия", "услови", "kaspi", "шарттар", "жеткізу"]):

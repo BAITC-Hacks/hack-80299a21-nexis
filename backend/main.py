@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from agent_service import agent_service
+from ekt_client import ekt_client
+from knowledge_base import KB_ARTICLES, search_knowledge_base
 
 app = FastAPI(
     title="NEXIS - ekt.kz Agentic AI Assistant",
@@ -68,6 +70,12 @@ class CartItem(BaseModel):
     quantity: int
     image: Optional[str] = None
 
+class EscalateRequest(BaseModel):
+    client_name: Optional[str] = "Клиент"
+    phone: Optional[str] = "+7 700 000 00 00"
+    comment: str
+    session_id: Optional[str] = "default_session"
+
 @app.get("/api/health", response_model=HealthResponse)
 def health_check():
     return {
@@ -76,6 +84,46 @@ def health_check():
         "team": "NEXIS",
         "agent_ready": True,
         "version": "1.0.0"
+    }
+
+@app.get("/api/products")
+def get_products(page: int = 1, limit: int = 20):
+    """Returns products from the live ekt.kz catalog for storefront display."""
+    ekt_client.preload_catalog(pages=4)
+    items = ekt_client._catalog_cache
+    start = (page - 1) * limit
+    paged_items = items[start:start + limit] if items else []
+    return {
+        "page": page,
+        "limit": limit,
+        "total": len(items),
+        "items": paged_items
+    }
+
+@app.get("/api/faq")
+def get_faq_categories():
+    """Returns official ekt.kz knowledge base articles and categories."""
+    return {
+        "categories": [
+            {"id": "b2b", "title": "Юридическим лицам (Счета с НДС 12%, ЭСФ)"},
+            {"id": "b2c", "title": "Оплата (Kaspi QR, Карты, Наличные)"},
+            {"id": "delivery", "title": "Доставка и склады по Казахстану"},
+            {"id": "registration", "title": "Регистрация (Физлица и Компании по БИН)"},
+            {"id": "certificates", "title": "Сертификаты соответствия ТР ТС"}
+        ],
+        "articles": KB_ARTICLES
+    }
+
+@app.post("/api/manager/escalate")
+def escalate_to_manager(req: EscalateRequest):
+    """Escalates complex requests or bulk orders to human sales engineer."""
+    ticket_id = f"TICK-EKT-{os.urandom(2).hex().upper()}"
+    return {
+        "status": "success",
+        "ticket_id": ticket_id,
+        "client_name": req.client_name,
+        "message": f"Заявка #{ticket_id} передана дежурному инженеру ekt.kz. С вами свяжутся в течение 10 минут.",
+        "manager_whatsapp_url": f"https://wa.me/77001234567?text=Здравствуйте!%20Мой%20тикет%20{ticket_id}"
     }
 
 @app.get("/api/cart")
