@@ -7,20 +7,20 @@
     "ru": {
       "passed": 48,
       "total": 48,
-      "synthetic_case_p50_ms": 105.63,
-      "synthetic_case_p95_ms": 235.58
+      "synthetic_case_p50_ms": 74.22,
+      "synthetic_case_p95_ms": 104.31
     },
     "kk": {
       "passed": 48,
       "total": 48,
-      "synthetic_case_p50_ms": 124.78,
-      "synthetic_case_p95_ms": 198.51
+      "synthetic_case_p50_ms": 79.05,
+      "synthetic_case_p95_ms": 113.28
     },
     "en": {
       "passed": 48,
       "total": 48,
-      "synthetic_case_p50_ms": 118.97,
-      "synthetic_case_p95_ms": 218.81
+      "synthetic_case_p50_ms": 73.13,
+      "synthetic_case_p95_ms": 110.39
     }
   },
   "passed": true,
@@ -30,1008 +30,1008 @@
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 80.82
+      "elapsed_ms": 71.27
     },
     {
       "id": "ru.exact_product",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 124.45
+      "elapsed_ms": 115.12
     },
     {
       "id": "ru.specifications",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 76.61
+      "elapsed_ms": 73.75
     },
     {
       "id": "ru.certificate",
+      "language": "ru",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 71.87
+    },
+    {
+      "id": "ru.zero_stock_analog",
       "language": "ru",
       "run": 1,
       "passed": true,
       "elapsed_ms": 70.16
     },
     {
-      "id": "ru.zero_stock_analog",
-      "language": "ru",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 72.89
-    },
-    {
       "id": "ru.city_followup",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 94.91
+      "elapsed_ms": 92.36
     },
     {
       "id": "ru.quantity_number",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 105.81
+      "elapsed_ms": 94.85
     },
     {
       "id": "ru.quantity_words",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 100.23
+      "elapsed_ms": 94.77
     },
     {
       "id": "ru.quantity_zero",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 100.78
+      "elapsed_ms": 100.48
     },
     {
       "id": "ru.quantity_fraction",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 107.93
+      "elapsed_ms": 93.1
     },
     {
       "id": "ru.quantity_excess",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 98.06
+      "elapsed_ms": 89.71
     },
     {
       "id": "ru.missing_offer",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 58.36
+      "elapsed_ms": 54.46
     },
     {
       "id": "ru.confirmation",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 96.9
+      "elapsed_ms": 88.01
     },
     {
       "id": "ru.quoted_not_consent",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 128.64
+      "elapsed_ms": 105.93
     },
     {
       "id": "ru.confirmation_replay",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 115.53
+      "elapsed_ms": 99.93
     },
     {
       "id": "ru.ordinal_selection",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 97.67
+      "elapsed_ms": 92.06
     },
     {
       "id": "ru.product_comparison",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 103.64
+      "elapsed_ms": 73.42
     },
     {
       "id": "ru.quantity_not_current",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 63.75
+      "elapsed_ms": 63.04
     },
     {
       "id": "ru.parameter_followup",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 105.46
+      "elapsed_ms": 86.11
     },
     {
       "id": "ru.purchase_terms",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 73.44
+      "elapsed_ms": 72.01
     },
     {
       "id": "ru.return_cable",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 80.81
+      "elapsed_ms": 66.54
     },
     {
       "id": "ru.technical_explanation",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 76.72
+      "elapsed_ms": 65.24
     },
     {
       "id": "ru.unknown_topic",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 79.94
+      "elapsed_ms": 63.31
     },
     {
       "id": "ru.barcode_not_payment",
       "language": "ru",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 86.23
+      "elapsed_ms": 72.63
     },
     {
       "id": "kk.greeting",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 64.1
+      "elapsed_ms": 62.74
     },
     {
       "id": "kk.exact_product",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 119.37
+      "elapsed_ms": 115.58
     },
     {
       "id": "kk.specifications",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 76.82
+      "elapsed_ms": 65.63
     },
     {
       "id": "kk.certificate",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 68.9
+      "elapsed_ms": 67.33
     },
     {
       "id": "kk.zero_stock_analog",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 82.19
+      "elapsed_ms": 69.57
     },
     {
       "id": "kk.city_followup",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 119.56
+      "elapsed_ms": 105.22
     },
     {
       "id": "kk.quantity_number",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 128.04
+      "elapsed_ms": 102.23
     },
     {
       "id": "kk.quantity_words",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 120.81
+      "elapsed_ms": 105.32
     },
     {
       "id": "kk.quantity_zero",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 113.99
+      "elapsed_ms": 100.58
     },
     {
       "id": "kk.quantity_fraction",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 114.59
+      "elapsed_ms": 107.59
     },
     {
       "id": "kk.quantity_excess",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 119.46
+      "elapsed_ms": 98.47
     },
     {
       "id": "kk.missing_offer",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 74.89
+      "elapsed_ms": 59.16
     },
     {
       "id": "kk.confirmation",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 117.5
+      "elapsed_ms": 95.27
     },
     {
       "id": "kk.quoted_not_consent",
       "language": "kk",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 150.38
+      "elapsed_ms": 113.28
     },
     {
       "id": "kk.confirmation_replay",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 140.97
-    },
-    {
-      "id": "kk.ordinal_selection",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 126.59
-    },
-    {
-      "id": "kk.product_comparison",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 92.78
-    },
-    {
-      "id": "kk.quantity_not_current",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 82.13
-    },
-    {
-      "id": "kk.parameter_followup",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 109.53
-    },
-    {
-      "id": "kk.purchase_terms",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 130.88
-    },
-    {
-      "id": "kk.return_cable",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 94.0
-    },
-    {
-      "id": "kk.technical_explanation",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 95.04
-    },
-    {
-      "id": "kk.unknown_topic",
-      "language": "kk",
-      "run": 1,
-      "passed": true,
-      "elapsed_ms": 150.25
-    },
-    {
-      "id": "kk.barcode_not_payment",
       "language": "kk",
       "run": 1,
       "passed": true,
       "elapsed_ms": 111.53
     },
     {
+      "id": "kk.ordinal_selection",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 101.28
+    },
+    {
+      "id": "kk.product_comparison",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 68.21
+    },
+    {
+      "id": "kk.quantity_not_current",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 62.47
+    },
+    {
+      "id": "kk.parameter_followup",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 89.05
+    },
+    {
+      "id": "kk.purchase_terms",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 74.9
+    },
+    {
+      "id": "kk.return_cable",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 64.03
+    },
+    {
+      "id": "kk.technical_explanation",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 65.73
+    },
+    {
+      "id": "kk.unknown_topic",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 69.12
+    },
+    {
+      "id": "kk.barcode_not_payment",
+      "language": "kk",
+      "run": 1,
+      "passed": true,
+      "elapsed_ms": 70.42
+    },
+    {
       "id": "en.greeting",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 93.55
+      "elapsed_ms": 59.5
     },
     {
       "id": "en.exact_product",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 88.29
+      "elapsed_ms": 73.64
     },
     {
       "id": "en.specifications",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 88.71
+      "elapsed_ms": 68.24
     },
     {
       "id": "en.certificate",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 77.94
+      "elapsed_ms": 66.06
     },
     {
       "id": "en.zero_stock_analog",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 83.78
+      "elapsed_ms": 70.73
     },
     {
       "id": "en.city_followup",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 118.96
+      "elapsed_ms": 98.85
     },
     {
       "id": "en.quantity_number",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 131.77
+      "elapsed_ms": 101.33
     },
     {
       "id": "en.quantity_words",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 112.89
+      "elapsed_ms": 97.77
     },
     {
       "id": "en.quantity_zero",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 120.76
+      "elapsed_ms": 94.92
     },
     {
       "id": "en.quantity_fraction",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 120.96
+      "elapsed_ms": 104.01
     },
     {
       "id": "en.quantity_excess",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 118.14
+      "elapsed_ms": 100.81
     },
     {
       "id": "en.missing_offer",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 72.78
+      "elapsed_ms": 56.76
     },
     {
       "id": "en.confirmation",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 129.88
+      "elapsed_ms": 89.81
     },
     {
       "id": "en.quoted_not_consent",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 160.27
+      "elapsed_ms": 110.63
     },
     {
       "id": "en.confirmation_replay",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 191.13
+      "elapsed_ms": 140.48
     },
     {
       "id": "en.ordinal_selection",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 120.97
+      "elapsed_ms": 92.68
     },
     {
       "id": "en.product_comparison",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 96.73
+      "elapsed_ms": 68.46
     },
     {
       "id": "en.quantity_not_current",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 86.11
+      "elapsed_ms": 62.39
     },
     {
       "id": "en.parameter_followup",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 146.68
+      "elapsed_ms": 89.35
     },
     {
       "id": "en.purchase_terms",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 115.65
+      "elapsed_ms": 71.35
     },
     {
       "id": "en.return_cable",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 127.6
+      "elapsed_ms": 66.17
     },
     {
       "id": "en.technical_explanation",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 118.98
+      "elapsed_ms": 72.62
     },
     {
       "id": "en.unknown_topic",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 69.66
+      "elapsed_ms": 64.16
     },
     {
       "id": "en.barcode_not_payment",
       "language": "en",
       "run": 1,
       "passed": true,
-      "elapsed_ms": 81.77
+      "elapsed_ms": 67.42
     },
     {
       "id": "ru.greeting",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 67.21
+      "elapsed_ms": 56.33
     },
     {
       "id": "ru.exact_product",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 80.34
+      "elapsed_ms": 70.13
     },
     {
       "id": "ru.specifications",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 76.19
+      "elapsed_ms": 66.48
     },
     {
       "id": "ru.certificate",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 86.08
+      "elapsed_ms": 68.38
     },
     {
       "id": "ru.zero_stock_analog",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 75.09
+      "elapsed_ms": 74.28
     },
     {
       "id": "ru.city_followup",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 110.45
+      "elapsed_ms": 100.78
     },
     {
       "id": "ru.quantity_number",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 135.55
+      "elapsed_ms": 103.99
     },
     {
       "id": "ru.quantity_words",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 159.06
+      "elapsed_ms": 102.23
     },
     {
       "id": "ru.quantity_zero",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 244.51
+      "elapsed_ms": 95.78
     },
     {
       "id": "ru.quantity_fraction",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 249.48
+      "elapsed_ms": 96.39
     },
     {
       "id": "ru.quantity_excess",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 213.4
+      "elapsed_ms": 97.19
     },
     {
       "id": "ru.missing_offer",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 150.88
+      "elapsed_ms": 55.42
     },
     {
       "id": "ru.confirmation",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 158.52
+      "elapsed_ms": 88.76
     },
     {
       "id": "ru.quoted_not_consent",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 213.31
+      "elapsed_ms": 117.0
     },
     {
       "id": "ru.confirmation_replay",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 235.58
+      "elapsed_ms": 104.31
     },
     {
       "id": "ru.ordinal_selection",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 317.47
+      "elapsed_ms": 90.03
     },
     {
       "id": "ru.product_comparison",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 117.95
+      "elapsed_ms": 69.48
     },
     {
       "id": "ru.quantity_not_current",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 109.35
+      "elapsed_ms": 62.73
     },
     {
       "id": "ru.parameter_followup",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 158.36
+      "elapsed_ms": 90.8
     },
     {
       "id": "ru.purchase_terms",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 166.29
+      "elapsed_ms": 70.54
     },
     {
       "id": "ru.return_cable",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 149.26
+      "elapsed_ms": 74.17
     },
     {
       "id": "ru.technical_explanation",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 114.27
+      "elapsed_ms": 64.19
     },
     {
       "id": "ru.unknown_topic",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 110.6
+      "elapsed_ms": 65.22
     },
     {
       "id": "ru.barcode_not_payment",
       "language": "ru",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 135.43
+      "elapsed_ms": 71.79
     },
     {
       "id": "kk.greeting",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 107.52
+      "elapsed_ms": 56.45
     },
     {
       "id": "kk.exact_product",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 122.13
+      "elapsed_ms": 70.51
     },
     {
       "id": "kk.specifications",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 134.88
+      "elapsed_ms": 68.36
     },
     {
       "id": "kk.certificate",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 117.03
+      "elapsed_ms": 69.17
     },
     {
       "id": "kk.zero_stock_analog",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 138.24
+      "elapsed_ms": 83.01
     },
     {
       "id": "kk.city_followup",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 165.03
+      "elapsed_ms": 106.59
     },
     {
       "id": "kk.quantity_number",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 176.77
+      "elapsed_ms": 105.89
     },
     {
       "id": "kk.quantity_words",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 231.7
+      "elapsed_ms": 102.07
     },
     {
       "id": "kk.quantity_zero",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 216.13
+      "elapsed_ms": 101.5
     },
     {
       "id": "kk.quantity_fraction",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 184.39
+      "elapsed_ms": 97.4
     },
     {
       "id": "kk.quantity_excess",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 192.54
+      "elapsed_ms": 96.0
     },
     {
       "id": "kk.missing_offer",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 113.98
+      "elapsed_ms": 58.85
     },
     {
       "id": "kk.confirmation",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 319.64
+      "elapsed_ms": 158.09
     },
     {
       "id": "kk.quoted_not_consent",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 198.51
+      "elapsed_ms": 115.24
     },
     {
       "id": "kk.confirmation_replay",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 177.37
+      "elapsed_ms": 107.01
     },
     {
       "id": "kk.ordinal_selection",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 154.94
+      "elapsed_ms": 96.5
     },
     {
       "id": "kk.product_comparison",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 126.41
+      "elapsed_ms": 68.45
     },
     {
       "id": "kk.quantity_not_current",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 123.14
+      "elapsed_ms": 70.66
     },
     {
       "id": "kk.parameter_followup",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 172.57
+      "elapsed_ms": 93.69
     },
     {
       "id": "kk.purchase_terms",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 139.38
+      "elapsed_ms": 75.08
     },
     {
       "id": "kk.return_cable",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 140.71
+      "elapsed_ms": 64.4
     },
     {
       "id": "kk.technical_explanation",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 173.69
+      "elapsed_ms": 65.52
     },
     {
       "id": "kk.unknown_topic",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 139.24
+      "elapsed_ms": 65.11
     },
     {
       "id": "kk.barcode_not_payment",
       "language": "kk",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 86.4
+      "elapsed_ms": 73.65
     },
     {
       "id": "en.greeting",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 129.94
+      "elapsed_ms": 65.13
     },
     {
       "id": "en.exact_product",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 168.69
+      "elapsed_ms": 71.76
     },
     {
       "id": "en.specifications",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 118.58
+      "elapsed_ms": 66.07
     },
     {
       "id": "en.certificate",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 225.05
+      "elapsed_ms": 118.1
     },
     {
       "id": "en.zero_stock_analog",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 154.7
+      "elapsed_ms": 69.92
     },
     {
       "id": "en.city_followup",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 193.48
+      "elapsed_ms": 97.22
     },
     {
       "id": "en.quantity_number",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 165.28
+      "elapsed_ms": 100.01
     },
     {
       "id": "en.quantity_words",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 192.54
+      "elapsed_ms": 97.84
     },
     {
       "id": "en.quantity_zero",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 136.06
+      "elapsed_ms": 93.21
     },
     {
       "id": "en.quantity_fraction",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 207.47
+      "elapsed_ms": 94.72
     },
     {
       "id": "en.quantity_excess",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 274.96
+      "elapsed_ms": 102.74
     },
     {
       "id": "en.missing_offer",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 177.48
+      "elapsed_ms": 56.66
     },
     {
       "id": "en.confirmation",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 223.15
+      "elapsed_ms": 89.78
     },
     {
       "id": "en.quoted_not_consent",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 218.81
+      "elapsed_ms": 110.39
     },
     {
       "id": "en.confirmation_replay",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 144.42
+      "elapsed_ms": 107.79
     },
     {
       "id": "en.ordinal_selection",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 105.1
+      "elapsed_ms": 98.19
     },
     {
       "id": "en.product_comparison",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 85.54
+      "elapsed_ms": 68.54
     },
     {
       "id": "en.quantity_not_current",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 79.43
+      "elapsed_ms": 72.48
     },
     {
       "id": "en.parameter_followup",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 110.13
+      "elapsed_ms": 92.82
     },
     {
       "id": "en.purchase_terms",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 88.68
+      "elapsed_ms": 72.25
     },
     {
       "id": "en.return_cable",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 81.11
+      "elapsed_ms": 63.74
     },
     {
       "id": "en.technical_explanation",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 87.98
+      "elapsed_ms": 65.52
     },
     {
       "id": "en.unknown_topic",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 71.48
+      "elapsed_ms": 66.32
     },
     {
       "id": "en.barcode_not_payment",
       "language": "en",
       "run": 2,
       "passed": true,
-      "elapsed_ms": 75.13
+      "elapsed_ms": 72.5
     }
   ]
 }
