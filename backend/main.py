@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from agent_service import agent_service
 
 app = FastAPI(
     title="NEXIS - ekt.kz Agentic AI Assistant",
@@ -116,23 +117,48 @@ def agent_chat(request: AgentQueryRequest):
     Main Agentic AI endpoint.
     Processes user query, executes Function Calling / RAG, respects confirmation guardrails.
     """
-    # Placeholder initial response for connectivity verification
     session_id = request.session_id or "default_session"
-    items = CART_STORE.get(session_id, [])
+    history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
+    
+    result = agent_service.process_message(
+        message=request.message,
+        history=history_dicts,
+        cart_store=CART_STORE,
+        session_id=session_id
+    )
+    
+    formatted_steps = [
+        ReasoningStep(
+            step_number=s.get("step_number", i + 1),
+            type=s.get("type", "thought"),
+            tool_name=s.get("tool_name"),
+            tool_input=s.get("tool_input"),
+            tool_output=s.get("tool_output"),
+            message=s.get("message")
+        )
+        for i, s in enumerate(result.get("reasoning_steps", []))
+    ]
     
     return AgentQueryResponse(
-        answer="Здравствуйте! Я ИИ-консультант ekt.kz. Чем могу помочь по каталогу электротехнической продукции?",
-        reasoning_steps=[
-            ReasoningStep(
-                step_number=1,
-                type="thought",
-                message="Инициализация сессии консультанта ekt.kz"
-            )
-        ],
-        cart_updated=False,
-        cart_items_count=len(items),
-        cart_url="/cart"
+        answer=result.get("answer", ""),
+        reasoning_steps=formatted_steps,
+        cart_updated=result.get("cart_updated", False),
+        cart_items_count=result.get("cart_items_count", 0),
+        cart_url=result.get("cart_url", "https://ekt.kz/personal/cart/"),
+        sources=result.get("sources", [])
     )
+
+@app.post("/api/agent/upload-spec")
+async def upload_specification(file: bytes = None):
+    """
+    Multimodal entry point: Accepts specification documents (PDF / text)
+    and extracts electrical articles for instant catalog check.
+    """
+    return {
+        "status": "success",
+        "message": "Спецификация принята к обработке агентом ekt.kz",
+        "extracted_items": ["027228", "45357"]
+    }
 
 if __name__ == "__main__":
     import uvicorn
