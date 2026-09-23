@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ekt.kz — ИИ-Консультант (NEXIS)</title>
+  <!-- Tailwind CSS CDN for instant zero-config rendering -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .pulse-online { animation: pulse-subtle 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-white font-black text-xl shadow">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-bold text-lg tracking-tight text-slate-800">ekt.kz</h1>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Электрокомплект</span>
+          </div>
+          <p class="text-xs text-slate-500 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-online"></span>
+            ИИ-Консультант каталога (Астана, Алматы, Шымкент)
+          </p>
+        </div>
+      </div>
+
+      <!-- CART BADGE -->
+      <a id="cartBadge" href="https://ekt.kz/personal/cart/" target="_blank" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 transition px-3.5 py-1.5 rounded-lg border border-slate-300">
+        <span class="text-base">🛒</span>
+        <span class="text-sm font-medium text-slate-700">Корзина:</span>
+        <span id="cartCount" class="bg-amber-500 text-white font-bold text-xs px-2 py-0.5 rounded-full">0</span>
+        <span id="cartSum" class="text-xs font-bold text-slate-800 ml-1">0 ₸</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN CHAT CONTAINER -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
+    <!-- CHAT MESSAGES STREAM -->
+    <div id="messagesContainer" class="flex-1 overflow-y-auto space-y-4 pb-4">
+      <!-- Welcome Message -->
+      <div class="flex items-start space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
+          ИИ
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm max-w-2xl text-sm leading-relaxed">
+          <p class="font-medium text-slate-800 mb-1">Здравствуйте! Я официальный ИИ-консультант ekt.kz.</p>
+          <p class="text-slate-600 mb-2">Помогу подобрать электротехническую продукцию, проверить наличие на складах городов Казахстана, найти аналоги при нулевом остатке или оформить заказ в корзину.</p>
+          <div class="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+            <button onclick="sendQuickPrompt('Каковы условия доставки и оплаты в Астане?')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
+              🚚 Условия доставки и оплаты
+            </button>
+            <button onclick="sendQuickPrompt('Есть ли автомат Legrand DRX250?')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
+              ⚡ Автомат Legrand DRX
+            </button>
+            <button onclick="sendQuickPrompt('Найди кабель ВВГнг')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
+              🔌 Кабель ВВГнг
+            </button>
+            <button onclick="sendQuickPrompt('Сәлеметсіз бе! Тауар жеткізу шарттары қандай?')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
+              🇰🇿 Қазақша кеңес
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROMPT INPUT FORM -->
+    <div class="mt-auto bg-white border border-slate-200 rounded-2xl p-3 shadow-md">
+      <form id="chatForm" onsubmit="handleSubmit(event)" class="flex items-center gap-2">
+        <button type="button" onclick="triggerFileUpload()" title="Прикрепить спецификацию (PDF/Excel)" class="p-2 text-slate-400 hover:text-slate-600 transition rounded-lg hover:bg-slate-100">
+          📎
+        </button>
+        <input type="file" id="fileUpload" class="hidden" onchange="handleFileUpload(event)">
+        <input 
+          id="userInput" 
+          type="text" 
+          placeholder="Спросите о товаре, наличии, аналогах или напишите 'Да, добавь в корзину'..."
+          class="flex-1 bg-transparent border-0 focus:ring-0 text-sm placeholder:text-slate-400 focus:outline-none px-2"
+          autocomplete="off"
+        />
+        <button 
+          type="submit" 
+          id="sendBtn"
+          class="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-xl text-sm transition flex items-center gap-1 shadow"
+        >
+          <span>Отправить</span>
+          <span>→</span>
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = "http://localhost:8000/api";
+    let chatHistory = [];
+
+    async function updateCartDisplay() {
+      try {
+        const res = await fetch(`${API_URL}/cart`);
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('cartCount').textContent = data.total_items || 0;
+          document.getElementById('cartSum').textContent = `${(data.total_sum || 0).toLocaleString()} ₸`;
+        }
+      } catch (err) {
+        console.warn("Cart fetch error:", err);
+      }
+    }
+
+    function appendMessage(role, text, steps = [], cartUrl = null) {
+      const container = document.getElementById('messagesContainer');
+      const isUser = role === 'user';
+      
+      const wrap = document.createElement('div');
+      wrap.className = `flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+      
+      const avatar = document.createElement('div');
+      avatar.className = `w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 shadow ${
+        isUser ? 'bg-slate-800 text-white' : 'bg-amber-500 text-white'
+      }`;
+      avatar.textContent = isUser ? 'Вы' : 'ИИ';
+
+      const bubble = document.createElement('div');
+      bubble.className = `rounded-2xl p-4 shadow-sm max-w-2xl text-sm leading-relaxed ${
+        isUser ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-800'
+      }`;
+
+      // Reasoning Steps Pill
+      if (!isUser && steps && steps.length > 0) {
+        const stepsBlock = document.createElement('div');
+        stepsBlock.className = 'mb-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-600';
+        stepsBlock.innerHTML = `
+          <div class="font-semibold text-slate-700 flex items-center gap-1 mb-1">
+            <span>🧠 Цепочка рассуждений агента:</span>
+          </div>
+          <div class="space-y-1">
+            ${steps.map(s => `
+              <div class="flex items-center gap-1.5">
+                <span class="text-amber-600 font-mono">#${s.step_number}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-200 text-[10px] uppercase font-mono">${s.type}</span>
+                <span class="truncate">${s.message || s.tool_name || ''}</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        bubble.appendChild(stepsBlock);
+      }
+
+      // Answer content
+      const content = document.createElement('div');
+      content.className = 'whitespace-pre-line';
+      content.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      bubble.appendChild(content);
+
+      // Cart Action Button if present
+      if (cartUrl) {
+        const cartBtn = document.createElement('div');
+        cartBtn.className = 'mt-3 pt-2 border-t border-slate-100 flex items-center gap-2';
+        cartBtn.innerHTML = `
+          <a href="${cartUrl}" target="_blank" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition">
+            🛒 Перейти к оформлению заказа
+          </a>
+        `;
+        bubble.appendChild(cartBtn);
+      }
+
+      wrap.appendChild(avatar);
+      wrap.appendChild(bubble);
+      container.appendChild(wrap);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function handleSubmit(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage('user', text);
+      input.value = '';
+      chatHistory.push({ role: 'user', content: text });
+
+      try {
+        const res = await fetch(`${API_URL}/agent/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            history: chatHistory
+          })
+        });
+
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        
+        appendMessage('assistant', data.answer, data.reasoning_steps, data.cart_url && data.cart_updated ? data.cart_url : null);
+        chatHistory.push({ role: 'assistant', content: data.answer });
+        
+        if (data.cart_updated) {
+          updateCartDisplay();
+        }
+      } catch (err) {
+        appendMessage('assistant', "⚠️ Произошла ошибка связи с сервером. Убедитесь, что бэкенд FastAPI запущен на http://localhost:8000.");
+      }
+    }
+
+    function sendQuickPrompt(promptText) {
+      document.getElementById('userInput').value = promptText;
+      handleSubmit();
+    }
+
+    function triggerFileUpload() {
+      document.getElementById('fileUpload').click();
+    }
+
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      appendMessage('user', `📎 Прикреплена спецификация: ${file.name}`);
+      appendMessage('assistant', `✅ Файл '${file.name}' принят на обработку. Агент сопоставляет позиции с каталогом ekt.kz...`);
+    }
+
+    // Init
+    updateCartDisplay();
+  </script>
+</body>
+</html>
