@@ -1,239 +1,157 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ekt.kz — ИИ-Консультант (NEXIS)</title>
-  <!-- Tailwind CSS CDN for instant zero-config rendering -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    @keyframes pulse-subtle {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-    .pulse-online { animation: pulse-subtle 2s infinite ease-in-out; }
-  </style>
-</head>
-<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f7f8" />
+    <meta name="description" content="ИИ-консультант интернет-магазина ekt.kz" />
+    <title>ekt.kz — ИИ-консультант</title>
+    <link rel="stylesheet" href="/src/index.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-3 8H5l6 12 3-8h5L13 2Z" /></symbol>
+      <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 3h2l2.2 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6" /><circle cx="10" cy="20" r="1" /><circle cx="18" cy="20" r="1" /></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12" /></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13" /></symbol>
+      <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.4 11.1-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h6" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></symbol>
+      <symbol id="i-package" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 8 9 5 9-5M3 8v9l9 5 9-5V8M12 13v9" /></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z" /><path d="m9 12 2 2 4-4" /></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3ZM19 14l1.1 2.9L23 18l-2.9 1.1L19 22l-1.1-2.9L15 18l2.9-1.1L19 14Z" /></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></symbol>
+      <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2Z" /></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></symbol>
+      <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z" /><path d="m3 8 9 5 9-5M12 13v8M8 5l9 5" /></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 3h7v7M10 14 21 3" /><path d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" /></symbol>
+    </svg>
 
-  <!-- TOP BAR / HEADER -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-white font-black text-xl shadow">
-          ⚡
-        </div>
-        <div>
-          <div class="flex items-center space-x-2">
-            <h1 class="font-bold text-lg tracking-tight text-slate-800">ekt.kz</h1>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Электрокомплект</span>
-          </div>
-          <p class="text-xs text-slate-500 flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-online"></span>
-            ИИ-Консультант каталога (Астана, Алматы, Шымкент)
-          </p>
-        </div>
-      </div>
-
-      <!-- CART BADGE -->
-      <a id="cartBadge" href="https://ekt.kz/personal/cart/" target="_blank" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 transition px-3.5 py-1.5 rounded-lg border border-slate-300">
-        <span class="text-base">🛒</span>
-        <span class="text-sm font-medium text-slate-700">Корзина:</span>
-        <span id="cartCount" class="bg-amber-500 text-white font-bold text-xs px-2 py-0.5 rounded-full">0</span>
-        <span id="cartSum" class="text-xs font-bold text-slate-800 ml-1">0 ₸</span>
-      </a>
-    </div>
-  </header>
-
-  <!-- MAIN CHAT CONTAINER -->
-  <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
-    <!-- CHAT MESSAGES STREAM -->
-    <div id="messagesContainer" class="flex-1 overflow-y-auto space-y-4 pb-4">
-      <!-- Welcome Message -->
-      <div class="flex items-start space-x-3">
-        <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
-          ИИ
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm max-w-2xl text-sm leading-relaxed">
-          <p class="font-medium text-slate-800 mb-1">Здравствуйте! Я официальный ИИ-консультант ekt.kz.</p>
-          <p class="text-slate-600 mb-2">Помогу подобрать электротехническую продукцию, проверить наличие на складах городов Казахстана, найти аналоги при нулевом остатке или оформить заказ в корзину.</p>
-          <div class="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
-            <button onclick="sendQuickPrompt('Каковы условия доставки и оплаты в Астане?')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
-              🚚 Условия доставки и оплаты
-            </button>
-            <button onclick="sendQuickPrompt('Есть ли автомат Legrand DRX250?')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
-              ⚡ Автомат Legrand DRX
-            </button>
-            <button onclick="sendQuickPrompt('Найди кабель ВВГнг')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
-              🔌 Кабель ВВГнг
-            </button>
-            <button onclick="sendQuickPrompt('Сәлеметсіз бе! Тауар жеткізу шарттары қандай?')" class="text-xs bg-slate-100 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg px-2.5 py-1 transition">
-              🇰🇿 Қазақша кеңес
-            </button>
-          </div>
+    <div class="storefront">
+      <div class="utility-bar">
+        <div class="utility-inner">
+          <span><svg class="icon"><use href="#i-pin" /></svg>Астана</span>
+          <a href="#">Личный кабинет</a>
+          <a href="#">Для бизнеса</a>
+          <a href="#">Покупателям <svg class="icon icon-small"><use href="#i-chevron" /></svg></a>
+          <a href="#">Оставить заявку</a>
+          <a class="phone-link" href="tel:+77002220514"><svg class="icon"><use href="#i-phone" /></svg>+7 (700) 222-05-14</a>
         </div>
       </div>
-    </div>
-
-    <!-- PROMPT INPUT FORM -->
-    <div class="mt-auto bg-white border border-slate-200 rounded-2xl p-3 shadow-md">
-      <form id="chatForm" onsubmit="handleSubmit(event)" class="flex items-center gap-2">
-        <button type="button" onclick="triggerFileUpload()" title="Прикрепить спецификацию (PDF/Excel)" class="p-2 text-slate-400 hover:text-slate-600 transition rounded-lg hover:bg-slate-100">
-          📎
-        </button>
-        <input type="file" id="fileUpload" class="hidden" onchange="handleFileUpload(event)">
-        <input 
-          id="userInput" 
-          type="text" 
-          placeholder="Спросите о товаре, наличии, аналогах или напишите 'Да, добавь в корзину'..."
-          class="flex-1 bg-transparent border-0 focus:ring-0 text-sm placeholder:text-slate-400 focus:outline-none px-2"
-          autocomplete="off"
-        />
-        <button 
-          type="submit" 
-          id="sendBtn"
-          class="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-xl text-sm transition flex items-center gap-1 shadow"
-        >
-          <span>Отправить</span>
-          <span>→</span>
-        </button>
-      </form>
-    </div>
-  </main>
-
-  <script>
-    const API_URL = "http://localhost:8000/api";
-    let chatHistory = [];
-
-    async function updateCartDisplay() {
-      try {
-        const res = await fetch(`${API_URL}/cart`);
-        if (res.ok) {
-          const data = await res.json();
-          document.getElementById('cartCount').textContent = data.total_items || 0;
-          document.getElementById('cartSum').textContent = `${(data.total_sum || 0).toLocaleString()} ₸`;
-        }
-      } catch (err) {
-        console.warn("Cart fetch error:", err);
-      }
-    }
-
-    function appendMessage(role, text, steps = [], cartUrl = null) {
-      const container = document.getElementById('messagesContainer');
-      const isUser = role === 'user';
-      
-      const wrap = document.createElement('div');
-      wrap.className = `flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
-      
-      const avatar = document.createElement('div');
-      avatar.className = `w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 shadow ${
-        isUser ? 'bg-slate-800 text-white' : 'bg-amber-500 text-white'
-      }`;
-      avatar.textContent = isUser ? 'Вы' : 'ИИ';
-
-      const bubble = document.createElement('div');
-      bubble.className = `rounded-2xl p-4 shadow-sm max-w-2xl text-sm leading-relaxed ${
-        isUser ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-800'
-      }`;
-
-      // Reasoning Steps Pill
-      if (!isUser && steps && steps.length > 0) {
-        const stepsBlock = document.createElement('div');
-        stepsBlock.className = 'mb-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-600';
-        stepsBlock.innerHTML = `
-          <div class="font-semibold text-slate-700 flex items-center gap-1 mb-1">
-            <span>🧠 Цепочка рассуждений агента:</span>
-          </div>
-          <div class="space-y-1">
-            ${steps.map(s => `
-              <div class="flex items-center gap-1.5">
-                <span class="text-amber-600 font-mono">#${s.step_number}</span>
-                <span class="px-1.5 py-0.5 rounded bg-slate-200 text-[10px] uppercase font-mono">${s.type}</span>
-                <span class="truncate">${s.message || s.tool_name || ''}</span>
-              </div>
-            `).join('')}
-          </div>
-        `;
-        bubble.appendChild(stepsBlock);
-      }
-
-      // Answer content
-      const content = document.createElement('div');
-      content.className = 'whitespace-pre-line';
-      content.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      bubble.appendChild(content);
-
-      // Cart Action Button if present
-      if (cartUrl) {
-        const cartBtn = document.createElement('div');
-        cartBtn.className = 'mt-3 pt-2 border-t border-slate-100 flex items-center gap-2';
-        cartBtn.innerHTML = `
-          <a href="${cartUrl}" target="_blank" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition">
-            🛒 Перейти к оформлению заказа
+      <header class="store-header">
+        <a class="store-brand" href="#" aria-label="ekt.kz — главная">
+          <span class="brand-mark"><svg class="icon"><use href="#i-bolt" /></svg></span>
+          <span class="brand-copy"><strong>ekt.kz</strong><small>ЭЛЕКТРОКОМПЛЕКТ</small></span>
+        </a>
+        <button class="catalog-button" type="button"><svg class="icon"><use href="#i-menu" /></svg>Каталог</button>
+        <label class="store-search"><svg class="icon"><use href="#i-search" /></svg><span>Поиск по каталогу</span></label>
+        <nav class="store-actions" aria-label="Разделы магазина">
+          <a href="#">Сравнить</a><a href="#">Избранное</a>
+          <a class="store-cart" id="store-cart-link" href="https://ekt.kz/personal/cart/" target="_blank" rel="noreferrer">
+            <svg class="icon"><use href="#i-cart" /></svg>Корзина <span class="cart-count" id="header-cart-count">0</span>
           </a>
-        `;
-        bubble.appendChild(cartBtn);
-      }
+        </nav>
+      </header>
 
-      wrap.appendChild(avatar);
-      wrap.appendChild(bubble);
-      container.appendChild(wrap);
-      container.scrollTop = container.scrollHeight;
-    }
+      <main class="store-content">
+        <div class="breadcrumb">Главная <span>/</span> Каталог электротехнической продукции</div>
+        <section class="store-hero">
+          <div class="hero-copy">
+            <span class="eyebrow"><span class="eyebrow-dot"></span>Электротехническая продукция</span>
+            <h1>Энергия решений<br /><span>для вашего проекта</span></h1>
+            <p>Кабель, автоматика, освещение и оборудование с подбором под вашу задачу.</p>
+            <div class="hero-search"><svg class="icon"><use href="#i-search" /></svg><span>Что вы ищете?</span><kbd>Найти</kbd></div>
+            <div class="hero-trust"><span><svg class="icon"><use href="#i-check" /></svg>Проверенные бренды</span><span><svg class="icon"><use href="#i-check" /></svg>Склады по Казахстану</span></div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="art-glow"></div><div class="art-grid"></div>
+            <div class="wire-coil coil-one"><span></span><span></span><span></span></div>
+            <div class="art-cable cable-one"></div><div class="art-cable cable-two"></div>
+            <div class="art-label">Надёжное<br /><b>электроснабжение</b></div>
+            <div class="art-chip"><svg class="icon"><use href="#i-bolt" /></svg> EKT PRO</div>
+          </div>
+        </section>
 
-    async function handleSubmit(e) {
-      if (e) e.preventDefault();
-      const input = document.getElementById('userInput');
-      const text = input.value.trim();
-      if (!text) return;
+        <section class="category-section" aria-label="Популярные категории">
+          <div class="section-heading"><div><span class="eyebrow">Быстрый доступ</span><h2>Популярные категории</h2></div><a href="#">Весь каталог <span>→</span></a></div>
+          <div class="category-grid">
+            <a class="category-card" href="#"><span class="category-icon cable-icon"><svg class="icon"><use href="#i-bolt" /></svg></span><span><strong>Кабель и провод</strong><small>1 240 товаров</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon"><svg class="icon"><use href="#i-shield" /></svg></span><span><strong>Автоматика</strong><small>860 товаров</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon lamp-icon"><svg class="icon"><use href="#i-spark" /></svg></span><span><strong>Освещение</strong><small>532 товара</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon"><svg class="icon"><use href="#i-package" /></svg></span><span><strong>Щитовое оборудование</strong><small>294 товара</small></span><span class="category-arrow">↗</span></a>
+          </div>
+        </section>
 
-      appendMessage('user', text);
-      input.value = '';
-      chatHistory.push({ role: 'user', content: text });
+        <section class="catalog-preview" aria-label="Подборка товаров">
+          <div class="section-heading"><div><span class="eyebrow">Популярное в каталоге</span><h2>Часто выбирают</h2></div><span class="demo-label">Демонстрационная витрина</span></div>
+          <div class="preview-grid">
+            <article class="preview-card"><div class="preview-art breaker-art"><span class="mini-breaker"></span><span class="mini-breaker"></span><span class="mini-breaker"></span></div><span class="preview-brand">EKF</span><h3>Автоматический выключатель 3P, 16A</h3><span class="preview-stock">В наличии</span><strong>от 3 480 ₸</strong></article>
+            <article class="preview-card"><div class="preview-art cable-art"><span class="cable-roll"></span></div><span class="preview-brand">КАЗЭНЕРГОКАБЕЛЬ</span><h3>Кабель ВВГнг(А)-LS 3×2,5</h3><span class="preview-stock">В наличии</span><strong>от 890 ₸ / м</strong></article>
+            <article class="preview-card"><div class="preview-art lamp-art"><span class="lamp-shape"></span></div><span class="preview-brand">IEK</span><h3>Светильник светодиодный 36 Вт</h3><span class="preview-stock">В наличии</span><strong>от 5 220 ₸</strong></article>
+          </div>
+        </section>
+        <footer class="store-footer"><span class="brand-mark"><svg class="icon"><use href="#i-bolt" /></svg></span><span>ekt.kz <small>Электротехническая продукция для проектов любого масштаба</small></span><span class="footer-note">Цены и остатки на фоне — иллюстративные</span></footer>
+      </main>
+    </div>
 
-      try {
-        const res = await fetch(`${API_URL}/agent/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            history: chatHistory
-          })
-        });
+    <button class="chat-launcher" id="chat-launcher" type="button" aria-label="Открыть ИИ-консультанта" aria-expanded="false">
+      <span class="launcher-orbit"></span>
+      <span class="mascot launcher-mascot"><span class="mascot-antenna"></span><span class="mascot-face"><i></i><i></i><b></b></span><span class="mascot-bolt"><svg class="icon"><use href="#i-bolt" /></svg></span></span>
+      <span class="launcher-label"><span class="launcher-dot"></span>ИИ-консультант</span>
+      <span class="launcher-tooltip">Подберём товар за пару минут</span>
+    </button>
 
-        if (!res.ok) throw new Error("API error");
-        const data = await res.json();
-        
-        appendMessage('assistant', data.answer, data.reasoning_steps, data.cart_url && data.cart_updated ? data.cart_url : null);
-        chatHistory.push({ role: 'assistant', content: data.answer });
-        
-        if (data.cart_updated) {
-          updateCartDisplay();
-        }
-      } catch (err) {
-        appendMessage('assistant', "⚠️ Произошла ошибка связи с сервером. Убедитесь, что бэкенд FastAPI запущен на http://localhost:8000.");
-      }
-    }
+    <section class="chat-widget" id="chat-widget" aria-label="EKT AI Assistant" aria-hidden="true">
+      <header class="widget-header">
+        <div class="assistant-identity">
+          <span class="assistant-avatar"><span class="mascot mini-mascot"><span class="mascot-antenna"></span><span class="mascot-face"><i></i><i></i><b></b></span><span class="mascot-bolt"><svg class="icon"><use href="#i-bolt" /></svg></span></span></span>
+          <span class="assistant-name"><strong>EKT AI Assistant</strong><small><span class="online-dot"></span>Онлайн <span class="header-divider">·</span> консультант ekt.kz</small></span>
+        </div>
+        <div class="widget-controls">
+          <button class="icon-button" id="minimize-chat" type="button" aria-label="Свернуть чат" title="Свернуть"><span class="minimize-glyph"></span></button>
+          <button class="icon-button close-button" id="close-chat" type="button" aria-label="Закрыть чат" title="Закрыть"><svg class="icon"><use href="#i-close" /></svg></button>
+        </div>
+      </header>
+      <div class="widget-subheader"><span class="secure-chip"><svg class="icon"><use href="#i-shield" /></svg>Помощь по каталогу</span><span class="reply-time"><span class="reply-dot"></span>Обычно отвечаем за минуту</span></div>
 
-    function sendQuickPrompt(promptText) {
-      document.getElementById('userInput').value = promptText;
-      handleSubmit();
-    }
+      <div class="messages" id="messages" role="log" aria-live="polite" aria-relevant="additions text">
+        <div class="message-row assistant-row welcome-row">
+          <span class="message-avatar"><svg class="icon"><use href="#i-bolt" /></svg></span>
+          <div class="message-stack">
+            <div class="message-bubble assistant-bubble">
+              <span class="message-kicker">Рады помочь</span>
+              <p>Здравствуйте! Я помогу найти товар, проверить наличие, подобрать аналог и посмотреть документы.</p>
+              <p class="muted-copy">Напишите артикул или опишите задачу своими словами.</p>
+            </div>
+            <time class="message-time">Сейчас</time>
+          </div>
+        </div>
+      </div>
 
-    function triggerFileUpload() {
-      document.getElementById('fileUpload').click();
-    }
+      <div class="quick-prompts" id="quick-prompts" aria-label="Примеры запросов">
+        <button type="button" data-prompt="Проверь наличие автомата на 160 А">Автомат 160 А <span>→</span></button>
+        <button type="button" data-prompt="Подбери кабель ВВГнг 3×2,5">Кабель ВВГнг <span>→</span></button>
+        <button type="button" data-prompt="Какие условия доставки и оплаты?">Доставка и оплата <span>→</span></button>
+      </div>
 
-    function handleFileUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      appendMessage('user', `📎 Прикреплена спецификация: ${file.name}`);
-      appendMessage('assistant', `✅ Файл '${file.name}' принят на обработку. Агент сопоставляет позиции с каталогом ekt.kz...`);
-    }
+      <form class="composer" id="chat-form">
+        <div class="attachment-preview" id="attachment-preview" hidden></div>
+        <div class="composer-box">
+          <button class="attach-button" id="attach-button" type="button" aria-label="Прикрепить спецификацию" title="Прикрепить PDF, Excel или изображение"><svg class="icon"><use href="#i-clip" /></svg></button>
+          <input class="visually-hidden" id="file-input" type="file" multiple accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png,.webp,application/pdf,image/*" />
+          <textarea id="message-input" rows="1" maxlength="1200" placeholder="Напишите, что нужно найти…" aria-label="Сообщение"></textarea>
+          <button class="send-button" id="send-button" type="submit" aria-label="Отправить сообщение"><svg class="icon"><use href="#i-send" /></svg></button>
+        </div>
+        <div class="composer-meta"><span><svg class="icon"><use href="#i-file" /></svg>PDF, Excel, JPG, PNG</span><span>Enter — отправить <kbd>Shift + Enter</kbd> — новая строка</span></div>
+      </form>
+      <div class="widget-footer"><span><svg class="icon"><use href="#i-spark" /></svg>Ассистент ekt.kz</span><span class="data-note">Демо-данные каталога</span></div>
+    </section>
 
-    // Init
-    updateCartDisplay();
-  </script>
-</body>
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
