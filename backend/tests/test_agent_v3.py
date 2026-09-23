@@ -304,3 +304,36 @@ class AgentV3Tests(APIHarness):
         self.assertFalse(rows["NOMINALNYY_TOK"]["same"])
         self.assertIn("Differences and unknown fields", response["answer"])
         self.assertIsNone(response["pending_offer"])
+
+    def test_explicit_numeric_comparison_resolves_each_product_id(self):
+        for lang, query in (("en", "Compare products 1001 and 1003"), ("en", "Compare IDs 1001 and 1003"),
+                            ("en", "Compare ID 1001 and ID 1003"), ("ru", "Сравни товары 1001 и 1003"),
+                            ("kk", "1001 және 1003 тауарларын салыстыр")):
+            response = self.direct(query, lang)
+            self.assertEqual([p["id"] for p in response["sources"]], [1001, 1003], query)
+            self.assertEqual([p["id"] for p in response["comparison"]["products"]], [1001, 1003], query)
+            self.assertIsNone(response["pending_offer"])
+            self.assertFalse(response["cart_updated"])
+
+    def test_comparison_id_list_does_not_include_budget_or_electrical_ratings(self):
+        self.assertEqual(router.comparison_product_ids("Compare products 1001 and 1003 with a budget of 10000"), [1001, 1003])
+        for query in ("Compare breakers 16A and 25A", "Compare products 16A and 25A", "Compare articles 1001 and 1003", "Compare a budget of 10000 and 20000"):
+            self.assertEqual(router.comparison_product_ids(query), [], query)
+
+    def test_missing_comparison_id_is_disclosed_without_inventing_a_card(self):
+        response = self.direct("Compare products 1001 and 999999", "en")
+        self.assertEqual([p["id"] for p in response["sources"]], [1001])
+        self.assertIsNone(response["comparison"])
+        self.assertIsNone(response["pending_offer"])
+        self.assertIn("999999 could not be verified", response["answer"])
+        self.assertIn("catalog_match_unavailable", response["warning_codes"])
+
+    def test_unavailable_numeric_comparison_never_falls_back_to_cached_search(self):
+        self.catalog.get_product_detail(1001)
+        self.catalog.get_product_detail(1003)
+        self.transport.fail = True
+        with patch.object(self.catalog, "search_products", side_effect=AssertionError("No search fallback after explicit ID failure")):
+            response = self.direct("Compare products 1001 and 1003", "en")
+        self.assertEqual(response["sources"], [])
+        self.assertIsNone(response["comparison"])
+        self.assertIsNone(response["pending_offer"])
