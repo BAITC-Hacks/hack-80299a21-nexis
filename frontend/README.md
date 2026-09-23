@@ -1,6 +1,6 @@
 # ChipAI frontend
 
-Vite + TypeScript, with the existing React ChipAI mascot. This version uses backend API v2.1.
+Vite + TypeScript, with the existing React ChipAI mascot. This version uses backend API v3.0.
 The repository root contract is in docs/api-contract.md.
 
 ## Local launch
@@ -28,8 +28,34 @@ model keys in VITE_ variables: they are public browser configuration.
   remain visible errors; no synthetic answers, prices, stock or certificates.
 - Product cards preserve null price/stock, verification flags, structured specs,
   source documents, warehouses, warnings, URLs and freshness timestamps.
-- RU maps to API ru; KZ maps to kk. English interface explicitly explains that
-  consultation replies are currently in Russian.
+- RU maps to API `ru`, KZ to `kk`, EN to `en`. The same selected language is sent
+  in `X-Language` on every API call, including sessions, uploads and cart operations;
+  chat also sends the authoritative `language` body field. English is never changed
+  to Russian. Legacy saved `kz` and canonical `kk` preferences are both recognized.
+- Language switching preserves the private session, selected products, entered
+  quantities and pending confirmation offer. It does not issue a cart mutation or
+  extend an offer's expiration. Product names, articles, numerical facts and URLs
+  retain their source values; stable specification `key` fields localize labels.
+  `unit_display` provides a translated unit label while the original `unit` is
+  preserved. Unknown packaging rules remain null; the positive integer input floor
+  does not assert a known minimum order, and the server validates every offer.
+- Chat displays cited `knowledge_sources` with source links, page numbers and
+  verification dates where provided. Additional `clarification.message` is shown
+  when it is not already in the answer. Source HTML is escaped, links are checked
+  and duplicate chunks from the same source/page are collapsed.
+- Optional `comparison` responses display a horizontally scrollable table of
+  verified product facts, using the server's localized parameter labels. Same,
+  different and insufficient-data indicators are translated; null values remain
+  unknown. All cell content uses text nodes. Comparing products adds no cart actions.
+- `answer_language` marks the returned message language; `request_id` is retained
+  as the message element's `data-request-id` for support. Raw diagnostics, model
+  traces and tool JSON are not displayed in customer messages. The timeline shows
+  actual backend action messages and localized fallbacks.
+- Interface, network errors, confirmations and client validation have RU/KK/EN
+  copy. v3 errors use the localized `detail`, stable `code` and `params`; older
+  foreign-language errors use a localized code fallback. Upload summaries/statuses
+  and product rationale are localized by the backend. Previous conversation text
+  remains in the language in which the response was received.
 - Addition: /cart/offer -> dialog with current name, article, quantity, price,
   stock and warnings -> explicit confirmation -> /cart/add.
 - Change/removal: /cart/change-offer -> the same explicit confirmation ->
@@ -56,9 +82,11 @@ layout; product consultation uses only actual API data.
     npm run typecheck
     npm run build
 
-The unit suite covers session creation/reuse, 401 recovery without write replay,
-multipart transport, API errors, language mapping, structured specs and unknown
-or unverified values. Browser end-to-end checks are separate.
+The unit suite (41 cases) covers session creation/reuse, 401 recovery without write
+replay, multipart transport, API errors, all-language headers, language switching
+without a new session, keyed specifications, preserved facts, source/clarification
+rendering, comparison tables, escaped content and unknown or unverified values. Browser end-to-end
+checks are separate; unit results do not establish model answer quality.
 
 ## Production container
 

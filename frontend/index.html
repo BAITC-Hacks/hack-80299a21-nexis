@@ -35,24 +35,24 @@
     <div class="storefront">
       <div class="utility-bar">
         <div class="utility-inner">
-          <span><svg class="icon"><use href="#i-pin" /></svg>Астана</span>
-          <a href="#">Личный кабинет</a>
-          <a href="#">Для бизнеса</a>
-          <a href="#">Покупателям <svg class="icon icon-small"><use href="#i-chevron" /></svg></a>
-          <a href="#">Оставить заявку</a>
-          <a class="phone-link" href="https://ekt.kz/about/contacts/" target="_blank" rel="noreferrer"><svg class="icon"><use href="#i-phone" /></svg>Контакты ekt.kz</a>
+          <span><svg class="icon"><use href="#i-pin" /></svg><span data-store-copy="city">Астана</span></span>
+          <a href="#" data-store-copy="account">Личный кабинет</a>
+          <a href="#" data-store-copy="business">Для бизнеса</a>
+          <a href="#"><span data-store-copy="buyers">Покупателям</span> <svg class="icon icon-small"><use href="#i-chevron" /></svg></a>
+          <a href="#" data-store-copy="request">Оставить заявку</a>
+          <a class="phone-link" href="https://ekt.kz/about/contacts/" target="_blank" rel="noreferrer"><svg class="icon"><use href="#i-phone" /></svg><span data-store-copy="contacts">Контакты ekt.kz</span></a>
           <button class="language-toggle" id="language-toggle" type="button" aria-label="Переключить язык интерфейса"><span class="language-code" data-language-option="ru" id="language-current">RU</span><span class="language-divider">/</span><span class="language-code" data-language-option="kz">KZ</span><span class="language-divider">/</span><span class="language-code" data-language-option="en">EN</span></button>
         </div>
       </div>
       <header class="store-header">
-        <a class="store-brand" href="#" aria-label="ekt.kz — главная">
+        <a class="store-brand" href="#" aria-label="ekt.kz" >
           <span class="brand-mark"><svg class="icon"><use href="#i-bolt" /></svg></span>
           <span class="brand-copy"><strong>ekt.kz</strong><small>ЭЛЕКТРОКОМПЛЕКТ</small></span>
         </a>
-        <button class="catalog-button" type="button"><svg class="icon"><use href="#i-menu" /></svg>Каталог</button>
-        <label class="store-search"><svg class="icon"><use href="#i-search" /></svg><span>Поиск по каталогу</span></label>
-        <nav class="store-actions" aria-label="Разделы магазина">
-          <a href="#">Сравнить</a><a href="#">Избранное</a>
+        <button class="catalog-button" type="button"><svg class="icon"><use href="#i-menu" /></svg><span data-store-copy="catalog">Каталог</span></button>
+        <label class="store-search"><svg class="icon"><use href="#i-search" /></svg><span data-store-copy="search">Поиск по каталогу</span></label>
+        <nav class="store-actions" aria-label="Разделы магазина" data-store-label="sections">
+          <a href="#" data-store-copy="compare">Сравнить</a><a href="#" data-store-copy="favorites">Избранное</a>
           <a class="store-cart" id="store-cart-link" href="https://ekt.kz/personal/cart/" target="_blank" rel="noreferrer">
             <svg class="icon"><use href="#i-cart" /></svg><span id="cart-label">Корзина</span> <span class="cart-count" id="header-cart-count">0</span>
           </a>
@@ -60,43 +60,43 @@
       </header>
 
       <main class="store-content">
-        <div class="breadcrumb">Главная <span>/</span> Каталог электротехнической продукции</div>
+        <div class="breadcrumb"><span data-store-copy="home">Главная</span> <span>/</span> <span data-store-copy="catalogTitle">Каталог электротехнической продукции</span></div>
         <section class="store-hero">
           <div class="hero-copy">
-            <span class="eyebrow"><span class="eyebrow-dot"></span>Электротехническая продукция</span>
-            <h1>Энергия решений<br /><span>для вашего проекта</span></h1>
-            <p>Кабель, автоматика, освещение и оборудование с подбором под вашу задачу.</p>
-            <div class="hero-search"><svg class="icon"><use href="#i-search" /></svg><span>Что вы ищете?</span><kbd>Найти</kbd></div>
-            <div class="hero-trust"><span><svg class="icon"><use href="#i-check" /></svg>Проверенные бренды</span><span><svg class="icon"><use href="#i-check" /></svg>Склады по Казахстану</span></div>
+            <span class="eyebrow"><span class="eyebrow-dot"></span><span data-store-copy="category">Электротехническая продукция</span></span>
+            <h1><span data-store-copy="heroTitle">Энергия решений</span><br /><span data-store-copy="heroAccent">для вашего проекта</span></h1>
+            <p data-store-copy="heroCopy">Кабель, автоматика, освещение и оборудование с подбором под вашу задачу.</p>
+            <div class="hero-search"><svg class="icon"><use href="#i-search" /></svg><span data-store-copy="searchQuestion">Что вы ищете?</span><kbd data-store-copy="find">Найти</kbd></div>
+            <div class="hero-trust"><span><svg class="icon"><use href="#i-check" /></svg><span data-store-copy="brands">Проверенные бренды</span></span><span><svg class="icon"><use href="#i-check" /></svg><span data-store-copy="warehouses">Склады по Казахстану</span></span></div>
           </div>
           <div class="hero-art" aria-hidden="true">
             <div class="art-glow"></div><div class="art-grid"></div>
             <div class="wire-coil coil-one"><span></span><span></span><span></span></div>
             <div class="art-cable cable-one"></div><div class="art-cable cable-two"></div>
-            <div class="art-label">Надёжное<br /><b>электроснабжение</b></div>
+            <div class="art-label"><span data-store-copy="power">Надёжное</span><br /><b data-store-copy="powerAccent">электроснабжение</b></div>
             <div class="art-chip"><svg class="icon"><use href="#i-bolt" /></svg> EKT PRO</div>
           </div>
         </section>
 
-        <section class="category-section" aria-label="Популярные категории">
-          <div class="section-heading"><div><span class="eyebrow">Быстрый доступ</span><h2>Популярные категории</h2></div><a href="#">Весь каталог <span>→</span></a></div>
+        <section class="category-section" aria-label="Популярные категории" data-store-label="popular">
+          <div class="section-heading"><div><span class="eyebrow" data-store-copy="quick">Быстрый доступ</span><h2 data-store-copy="popular">Популярные категории</h2></div><a href="#"><span data-store-copy="all">Весь каталог</span> <span>→</span></a></div>
           <div class="category-grid">
-            <a class="category-card" href="#"><span class="category-icon cable-icon"><svg class="icon"><use href="#i-bolt" /></svg></span><span><strong>Кабель и провод</strong><small>1 240 товаров</small></span><span class="category-arrow">↗</span></a>
-            <a class="category-card" href="#"><span class="category-icon"><svg class="icon"><use href="#i-shield" /></svg></span><span><strong>Автоматика</strong><small>860 товаров</small></span><span class="category-arrow">↗</span></a>
-            <a class="category-card" href="#"><span class="category-icon lamp-icon"><svg class="icon"><use href="#i-spark" /></svg></span><span><strong>Освещение</strong><small>532 товара</small></span><span class="category-arrow">↗</span></a>
-            <a class="category-card" href="#"><span class="category-icon"><svg class="icon"><use href="#i-package" /></svg></span><span><strong>Щитовое оборудование</strong><small>294 товара</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon cable-icon"><svg class="icon"><use href="#i-bolt" /></svg></span><span><strong data-store-copy="cables">Кабель и провод</strong><small data-store-copy="cableCount">1 240 товаров</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon"><svg class="icon"><use href="#i-shield" /></svg></span><span><strong data-store-copy="automation">Автоматика</strong><small data-store-copy="automationCount">860 товаров</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon lamp-icon"><svg class="icon"><use href="#i-spark" /></svg></span><span><strong data-store-copy="lighting">Освещение</strong><small data-store-copy="lightingCount">532 товара</small></span><span class="category-arrow">↗</span></a>
+            <a class="category-card" href="#"><span class="category-icon"><svg class="icon"><use href="#i-package" /></svg></span><span><strong data-store-copy="switchgear">Щитовое оборудование</strong><small data-store-copy="switchgearCount">294 товара</small></span><span class="category-arrow">↗</span></a>
           </div>
         </section>
 
-        <section class="catalog-preview" aria-label="Подборка товаров">
-          <div class="section-heading"><div><span class="eyebrow">Популярное в каталоге</span><h2>Часто выбирают</h2></div><span class="demo-label">Демонстрационная витрина</span></div>
+        <section class="catalog-preview" aria-label="Подборка товаров" data-store-label="selection">
+          <div class="section-heading"><div><span class="eyebrow" data-store-copy="popularCatalog">Популярное в каталоге</span><h2 data-store-copy="frequent">Часто выбирают</h2></div><span class="demo-label" data-store-copy="demo">Демонстрационная витрина</span></div>
           <div class="preview-grid">
-            <article class="preview-card"><div class="preview-art breaker-art"><span class="mini-breaker"></span><span class="mini-breaker"></span><span class="mini-breaker"></span></div><span class="preview-brand">EKF</span><h3>Автоматический выключатель 3P, 16A</h3><span class="preview-stock">В наличии</span><strong>от 3 480 ₸</strong></article>
-            <article class="preview-card"><div class="preview-art cable-art"><span class="cable-roll"></span></div><span class="preview-brand">КАЗЭНЕРГОКАБЕЛЬ</span><h3>Кабель ВВГнг(А)-LS 3×2,5</h3><span class="preview-stock">В наличии</span><strong>от 890 ₸ / м</strong></article>
-            <article class="preview-card"><div class="preview-art lamp-art"><span class="lamp-shape"></span></div><span class="preview-brand">IEK</span><h3>Светильник светодиодный 36 Вт</h3><span class="preview-stock">В наличии</span><strong>от 5 220 ₸</strong></article>
+            <article class="preview-card"><div class="preview-art breaker-art"><span class="mini-breaker"></span><span class="mini-breaker"></span><span class="mini-breaker"></span></div><span class="preview-brand">EKF</span><h3>Автоматический выключатель 3P, 16A</h3><span class="preview-stock" data-store-copy="illustrativeStock">Пример наличия</span><strong><span data-store-copy="pricePrefix">от</span> 3 480 ₸</strong></article>
+            <article class="preview-card"><div class="preview-art cable-art"><span class="cable-roll"></span></div><span class="preview-brand">КАЗЭНЕРГОКАБЕЛЬ</span><h3>Кабель ВВГнг(А)-LS 3×2,5</h3><span class="preview-stock" data-store-copy="illustrativeStock">Пример наличия</span><strong><span data-store-copy="pricePrefix">от</span> 890 ₸ / <span data-store-copy="meter">м</span></strong></article>
+            <article class="preview-card"><div class="preview-art lamp-art"><span class="lamp-shape"></span></div><span class="preview-brand">IEK</span><h3>Светильник светодиодный 36 Вт</h3><span class="preview-stock" data-store-copy="illustrativeStock">Пример наличия</span><strong><span data-store-copy="pricePrefix">от</span> 5 220 ₸</strong></article>
           </div>
         </section>
-        <footer class="store-footer"><span class="brand-mark"><svg class="icon"><use href="#i-bolt" /></svg></span><span>ekt.kz <small>Электротехническая продукция для проектов любого масштаба</small></span><span class="footer-note">Цены и остатки на фоне — иллюстративные</span></footer>
+        <footer class="store-footer"><span class="brand-mark"><svg class="icon"><use href="#i-bolt" /></svg></span><span>ekt.kz <small data-store-copy="footer">Электротехническая продукция для проектов любого масштаба</small></span><span class="footer-note" data-store-copy="illustrative">Цены, остатки и количество товаров на фоне — иллюстративные</span></footer>
       </main>
     </div>
 
@@ -178,7 +178,7 @@
         <div class="composer-box">
           <button class="attach-button" id="attach-button" type="button" aria-label="Прикрепить спецификацию" title="Прикрепить PDF, Excel или изображение"><svg class="icon"><use href="#i-clip" /></svg></button>
           <input class="visually-hidden" id="file-input" type="file" multiple accept=".pdf,.txt,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp" />
-          <textarea id="message-input" rows="1" maxlength="1200" placeholder="Напишите, что нужно найти…" aria-label="Сообщение"></textarea>
+          <textarea id="message-input" rows="1" maxlength="4000" placeholder="Напишите, что нужно найти…" aria-label="Сообщение"></textarea>
           <button class="send-button" id="send-button" type="submit" aria-label="Отправить сообщение"><svg class="icon"><use href="#i-send" /></svg></button>
         </div>
         <div class="composer-meta"><span><svg class="icon"><use href="#i-file" /></svg>PDF, Excel, JPG, PNG</span><span><span id="composer-send-hint">Enter — отправить</span> <kbd>Shift + Enter</kbd> <span id="composer-newline-hint">— новая строка</span></span></div>
