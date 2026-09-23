@@ -1,41 +1,69 @@
-# ekt.kz AI Chat Widget
+# ChipAI frontend
 
-Компактный демонстрационный виджет консультанта для встраивания на страницу интернет-магазина ekt.kz. Текущая страница магазина служит визуальной подложкой для предпросмотра.
+Vite + TypeScript, with the existing React ChipAI mascot. This version uses backend API v2.1.
+The repository root contract is in docs/api-contract.md.
 
-## Запуск
+## Local launch
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Use Node.js 24 LTS (the tests use native TypeScript stripping):
 
-Vite откроет локальный предпросмотр по адресу `http://localhost:5173`. Production-сборка создаётся командой `npm run build`.
+    cd frontend
+    npm ci
+    npm run dev -- --host 127.0.0.1
 
-## Виджет ChipAI
+Start the backend on http://localhost:8000 first. Open the URL printed by Vite
+(default http://localhost:5173). In the combined Docker setup, run docker compose up
+--build from the repository root and open http://localhost:5173.
 
-Точка входа — `src/main.ts`. Типы данных, локализация RU/KZ/EN и рендеринг статусов вынесены в `src/chat/`; оформление чата — в `src/styles/chat.css`.
+The default API base is http://localhost:8000/api. To change it, set
+VITE_API_BASE_URL in frontend/.env.local, e.g. VITE_API_BASE_URL=/api when the
+reverse proxy serves both components under one origin. Never put API passwords or
+model keys in VITE_ variables: they are public browser configuration.
 
-`ChipMascot` принимает `state: 'idle' | 'thinking' | 'success'`, `size` и `className`. Компонент использует SVG и собственный CSS: дыхание, моргание раз в 4 секунды, радар ожидания и вспышку при ответе. Свечение и стекло статичны; анимации меняют только `transform` и `opacity`. Поддерживается `prefers-reduced-motion`.
+## What is connected
 
-Кнопка 64×64 открывает и закрывает чат; закрытая панель имеет `inert`. Язык сохраняется в браузере. Timeline показывает статусы из ответа API, а во время ожидания — неопределённый прогресс запроса.
+- Server-created guest sessions, X-Session-Id, expired-session recovery. Expired
+  POST requests are never replayed automatically, including text confirmations.
+- Quick prompts and ordinary messages use the real chat endpoint. API failures
+  remain visible errors; no synthetic answers, prices, stock or certificates.
+- Product cards preserve null price/stock, verification flags, structured specs,
+  source documents, warehouses, warnings, URLs and freshness timestamps.
+- RU maps to API ru; KZ maps to kk. English interface explicitly explains that
+  consultation replies are currently in Russian.
+- Addition: /cart/offer -> dialog with current name, article, quantity, price,
+  stock and warnings -> explicit confirmation -> /cart/add.
+- Change/removal: /cart/change-offer -> the same explicit confirmation ->
+  /cart/change. Every change is server-owned; the browser never edits live cart
+  quantities locally.
+- Text confirmation is sent to the agent. Its actual answer and cart_updated
+  state are displayed, then the current server cart is fetched.
+- Opening the drawer or saved-cart page refreshes the server snapshot. Opening
+  that page does not place an order and does not clear the cart.
+- Multipart uploads: PDF, TXT, DOCX, XLSX, XLS, JPEG, PNG and WEBP, up to 15 MiB
+  each. Results show all matched and unresolved lines, nullable quantities,
+  known estimate portion, warning messages and candidate analogs. Uploading does
+  not mutate the cart. OCR availability is determined by the backend.
+- Keyboard access, focus handling, native confirmation dialog, responsive widget
+  and ChipAI thinking/success states are retained.
 
-Проверка типов: `npm run typecheck`. Перед публикацией выполните её вместе с `npm run build`.
+The backend cart is a persisted demonstration purchasing list. It does not reserve
+stock or create a partner order. The background storefront is an illustrative
+layout; product consultation uses only actual API data.
 
-## Интеграция с API
+## Checks
 
-По умолчанию фронтенд обращается к `http://localhost:8000/api`. Для другого адреса задайте `VITE_API_BASE_URL`, например:
+    npm test
+    npm run typecheck
+    npm run build
 
-```env
-VITE_API_BASE_URL=https://api.example.kz/api
-```
+The unit suite covers session creation/reuse, 401 recovery without write replay,
+multipart transport, API errors, language mapping, structured specs and unknown
+or unverified values. Browser end-to-end checks are separate.
 
-Используемые маршруты:
+## Production container
 
-- `GET /health` и `GET /cart?session_id=…` — проверка backend и чтение корзины;
-- `POST /agent/chat` — сообщения, история диалога и reasoning steps;
-- `POST /cart/add?session_id=…` — добавление только после отдельного нажатия кнопки в карточке.
-
-Сообщения с просьбой добавить товар без нажатия кнопки блокируются на фронтенде. Количество проверяется относительно остатка. При недоступном API включаются демонстрационные данные; цены, остатки и PDF-пример помечены как демонстрационные.
-
-Скрепка принимает PDF, Excel, JPG, PNG и WEBP размером до 15 МБ и показывает вложения в сообщении. Текущий API-контракт принимает только JSON-текст, поэтому передача содержимого файла потребует отдельного upload endpoint.
+frontend/Dockerfile builds the app and serves dist with nginx on port 80.
+Build argument VITE_API_BASE_URL defaults to /api. nginx forwards /api/ and
+/cart/ unchanged to backend:8000. The root Compose configuration supplies this
+service name. It limits request bodies to 16 MiB and allows up to 180 seconds
+for upload/OCR responses. Configure HTTPS at the deployment ingress.

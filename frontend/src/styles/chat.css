@@ -303,3 +303,37 @@
   .chat-widget, .chat-launcher, .chat-widget *, .chat-launcher *, .chat-widget *::before, .chat-widget *::after, .chat-launcher::before, .chat-launcher *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .reasoning-live .reasoning-progress-fill { transform: none !important; }
 }
+.offer-dialog {
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 24px;
+  border: 1px solid #d8e7ec;
+  border-radius: 20px;
+  background: white;
+  color: #143247;
+  box-shadow: 0 24px 80px #092f4740;
+  overflow-y: auto;
+}
+.offer-dialog::backdrop { background: #102d4266; }
+.offer-dialog h2 { margin: 0 0 16px; font-size: 20px; font-weight: 700; }
+.offer-dialog p { margin: 10px 0; overflow-wrap: anywhere; }
+.offer-actions { display: flex; gap: 12px; margin-top: 20px; align-items: center; }
+.offer-actions .add-cart-button { margin: 0; }
+.offer-cancel { padding: 12px; border-radius: 8px; border: 1px solid #d8e7ec; cursor: pointer; }
+.data-warnings { padding: 10px 12px; background: #fff7e5; color: #715020; border-radius: 8px; font-size: 12px; overflow-wrap: anywhere; }
+ul.data-warnings { list-style: disc; padding-left: 28px; }
+.checked-at { display: block; color: #617b8a; margin: 8px 0; }
+.stock-details { margin: 8px 0; font-size: 12px; }
+.stock-details summary { cursor: pointer; }
+.stock-details ul { padding-left: 15px; list-style: disc; }
+.pending-offer { border: 1px solid #b5dadd; padding: 12px; border-radius: 12px; margin-top: 12px; background: #f1faf8; }
+.pending-offer p { margin-top: 8px; }
+.spec-estimate h3, .spec-estimate h4 { font-weight: 700; margin: 10px 0; }
+.estimate-row { margin-top: 16px; padding-top: 10px; border-top: 1px solid #dfebef; }
+.unmatched-lines { list-style: disc; padding-left: 18px; }
+.unmatched-lines li { margin: 10px 0; overflow-wrap: anywhere; }
+.cart-state { padding: 20px; color: #617b8a; }
+.assistant-bubble p { overflow-wrap: anywhere; }
+.assistant-bubble a { color: #087c9c; text-decoration: underline; text-underline-offset: 2px; }
+button:disabled { cursor: not-allowed; opacity: .55; }

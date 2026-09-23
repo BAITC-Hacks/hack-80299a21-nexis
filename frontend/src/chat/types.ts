@@ -1,100 +1,41 @@
 export type Language = 'ru' | 'kz' | 'en';
-export type Scenario = 'cable' | 'analog' | 'delivery';
-
-export interface ReasoningStep {
-  type?: string;
-  message?: string;
-  tool_name?: string;
-  tool_output?: unknown;
-  status?: string;
-  completed?: boolean;
-}
-
+export interface ReasoningStep { type?: string; message?: string; tool_name?: string; tool_output?: unknown; status?: string; completed?: boolean }
+export interface Specification { name: string; value: unknown }
+export interface Store { id?: number; name: string; quantity: number | null }
 export interface ProductSource {
-  id?: number | string;
-  product_id?: number | string;
-  brand?: string;
-  manufacturer?: string;
-  name?: string;
-  title?: string;
-  article?: string;
-  sku?: string;
-  price?: number | string;
-  stock?: number | string;
-  quantity?: number | string;
-  available_quantity?: number | string;
-  unit?: string;
-  specifications?: string[] | string;
-  certificate_url?: string;
-  certificate_link?: string;
-  certificate?: string | boolean;
-  has_certificate?: boolean;
-  certificate_available?: boolean;
-  image?: string | null;
-  rationale?: string;
-  analogs?: ProductSource[];
+  id?: number | string; product_id?: number | string; name?: string; article?: string; brand?: string;
+  price?: number | null; quantity?: number | null; price_verified?: boolean; stock_verified?: boolean;
+  unit?: string; specifications?: (Specification | string)[]; certificate_url?: string | null;
+  image?: string | null; url?: string | null; rationale?: string; analogs?: ProductSource[];
+  stores?: Store[]; last_checked_at?: string | null; data_quality_warnings?: string[];
+  min_order_quantity?: number | null; order_multiple?: number | null;
 }
-
 export interface Product {
-  id: number;
-  brand: string;
-  name: string;
-  article: string;
-  price: number;
-  stock: number;
-  unit: string;
-  specifications: string[];
-  certificateUrl: string | null;
-  certificate: boolean;
-  image: string | null;
-  rationale: string;
-  analogs: Product[];
+  id: number; name: string; article: string; brand: string; price: number | null; stock: number | null;
+  priceVerified: boolean; stockVerified: boolean; unit: string; specifications: string[];
+  certificateUrl: string | null; image: string | null; url: string | null; rationale: string; analogs: Product[];
+  stores: Store[]; checkedAt: string | null; warnings: string[]; minimum: number; multiple: number;
 }
-
-export interface CartItem {
-  product_id: number;
-  id?: number;
-  article?: string;
-  sku?: string;
-  name?: string;
-  title?: string;
-  price: number;
-  quantity: number;
-  stock?: number;
-  available_quantity?: number;
-  image?: string | null;
-  unit?: string;
-  brand?: string;
+export interface CartItem { product_id: number; name: string; article?: string; price: number; quantity: number; unit?: string; stock?: number | null; stock_available?: number | null }
+export interface Cart { items: CartItem[]; checkout_url: string | null; total_items?: number; total_sum?: number; cart_mode?: string; stock_reserved?: boolean }
+export interface Offer {
+  offer_token: string; product_id: number; product_name: string; article: string; quantity: number; price: number;
+  stock_available: number | null; expires_in_seconds: number; cart_mode: string; data_quality_warnings?: string[];
+  operation?: 'set_quantity'; previous_quantity?: number;
 }
-
-export interface Cart {
-  items: CartItem[];
-  checkout_url: string;
-}
-
-export interface AssistantReply {
-  isDemo: boolean;
-  answer: string;
-  steps: ReasoningStep[];
-  products: Product[];
-  scenario?: Scenario;
-  delivery?: boolean;
-}
-
+export interface KnowledgeSource { title: string; source_url: string; verified_at?: string }
 export interface ChatResponse {
-  answer?: string;
-  cart_updated?: boolean;
-  reasoning_steps?: ReasoningStep[];
-  sources?: ProductSource[];
+  answer: string; cart_updated?: boolean; reasoning_steps?: ReasoningStep[]; sources?: ProductSource[];
+  pending_offer?: Offer | null; cart_url?: string; knowledge_sources?: KnowledgeSource[]; warnings?: string[];
 }
-
-export interface CartResponse {
-  items?: CartItem[];
-  cart?: CartItem[];
-  checkout_url?: string;
+export interface CartResult { answer?: string; message?: string; cart: CartItem[] | Cart; cart_url: string; success: boolean }
+export interface HistoryMessage { role: 'user' | 'assistant'; content: string }
+export interface EstimateMatch extends Omit<ProductSource, 'quantity'> {
+  query_line: string; quantity: number | null; quantity_warning?: string | null; unit_price: number | null;
+  subtotal: number | null; stock_available: number | null; status: string; analog?: ProductSource | null;
 }
-
-export interface HistoryMessage {
-  role: 'user' | 'assistant';
-  content: string;
+export interface EstimateUnmatched { query_line: string; status: string; quantity?: number | null; quantity_warning?: string | null; candidates?: { id: number; name: string }[] }
+export interface UploadResponse {
+  filename: string; estimate: { summary_text: string; estimate_complete: boolean; total_estimate_kzt: number;
+    matched_items: EstimateMatch[]; unmatched_items: EstimateUnmatched[]; ignored_lines: string[]; warnings: string[] };
 }
