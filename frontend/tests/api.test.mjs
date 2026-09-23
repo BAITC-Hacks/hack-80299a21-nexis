@@ -13,6 +13,13 @@ test('KZ maps to kk; English interface explicitly uses Russian consultation', ()
   assert.equal(apiLanguage('ru'), 'ru');
   assert.equal(apiLanguage('en'), 'ru');
 });
+test('native fetch is called without an ApiClient receiver', async () => {
+  const api = new ApiClient('/api', async function (url) {
+    assert.equal(this, undefined, 'Browser fetch must not be called as an ApiClient method');
+    return url.endsWith('/session') ? json({ session_id: 'one' }) : json({ items: [] });
+  });
+  assert.deepEqual(await api.request('/cart'), { items: [] });
+});
 test('concurrent requests create one server session and share its header', async () => {
   const calls = [];
   const api = new ApiClient('/api', async (url, options) => {

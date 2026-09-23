@@ -36,7 +36,9 @@ export class ApiClient {
   private async fetchTimed(path: string, options: RequestInit, timeout: number): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
-    try { return await this.fetcher(this.base + path, { ...options, signal: controller.signal }); }
+    // Native browser fetch must not receive the ApiClient instance as its receiver.
+    const fetcher = this.fetcher;
+    try { return await fetcher(this.base + path, { ...options, signal: controller.signal }); }
     catch (error) {
       throw new ApiError(error instanceof Error && error.name === 'AbortError'
         ? 'Ответ задерживается. Проверьте корзину перед повторным подтверждением.'
